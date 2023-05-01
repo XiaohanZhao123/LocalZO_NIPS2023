@@ -1044,7 +1044,7 @@ def run_and_time(prs=None, method='s3gd'):
     elif method == 'localZO':  # Sparse LocalZO
         prs['SNN_function'] = SparseZOLayer.apply
     else :
-        sg=getattr(SurrGradSpike,prs['surrogate'])
+        sg=getattr(SurrGradSpike, prs['surrogate'])
         prs['spike_fn'] = sg.apply
         prs['SNN_function'] = SNNLayerOrig
         #print(sg)
