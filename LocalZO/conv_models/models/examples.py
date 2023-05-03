@@ -1,6 +1,7 @@
 from torch import nn
 import spconv.pytorch as spconv
-from LocalZO.conv_models.neurons import LeakyPlain
+from LocalZO.conv_models.neurons import LeakyPlain, LeakeyZOPlain, LeakyZOPlainOnce
+from LocalZO.conv_models.samplers import BaseSampler, NormalSampler, NormalOnceSampler, BaseOnceSampler
 import torch
 
 
@@ -47,7 +48,7 @@ class SpconvNet(nn.Module):
         """
         super(SpconvNet, self).__init__()
         self.conv1 = spconv.SparseConv2d(in_channels=2, out_channels=12, kernel_size=5, algo=algo, bias=True)
-        self.pool1 = spconv.SparseMaxPool2d(kernel_size=2, stride=2, algo=algo,)
+        self.pool1 = spconv.SparseMaxPool2d(kernel_size=2, stride=2, algo=algo, )
         self.ac1 = LeakyPlain(u_th, beta, batch_size)
         self.conv2 = spconv.SparseConv2d(in_channels=12, out_channels=32, kernel_size=5, algo=algo, bias=True)
         self.pool2 = spconv.SparseMaxPool2d(kernel_size=2, stride=2, algo=algo)
@@ -81,3 +82,76 @@ class SpconvNet(nn.Module):
         net = SpconvNet()
         net.load_state_dict(torch.load(path))
         return net
+
+
+class ExampleNetLocalZO(nn.Module):
+    def __init__(self, batch_size, u_th, beta, conv_algorithm=spconv.ConvAlgo.MaskSplitImplicitGemm,
+                 random_sampler: BaseSampler = NormalSampler, sample_num: int =5):
+        super(ExampleNetLocalZO, self).__init__()
+        self.sample_num = sample_num
+        self.batch_size = batch_size
+        self.conv_block1 = nn.Sequential(
+            spconv.SparseConv2d(2, 16, 5, bias=True, algo=conv_algorithm),
+            spconv.SparseBatchNorm(16, eps=1e-5, momentum=0.1),
+            spconv.SparseMaxPool2d(2, stride=2),
+            LeakeyZOPlain(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=random_sampler(), sample_num=sample_num)
+        )
+        self.conv_block2 = nn.Sequential(
+            spconv.SparseConv2d(16, 32, 5, bias=True, algo=conv_algorithm),
+            spconv.SparseBatchNorm(32, eps=1e-5, momentum=0.1),
+            spconv.SparseMaxPool2d(2, stride=2),
+            LeakeyZOPlain(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=random_sampler(), sample_num=sample_num)
+        )
+        self.to_dense = spconv.ToDense()  # convert the sparse tensor to dense tensor
+        self.flatten = nn.Flatten(start_dim=1)
+        self.fc = nn.Sequential(
+            nn.Linear(32 * 5 * 5, 10),
+            LeakyPlain(u_th=u_th, beta=beta, batch_size=batch_size)
+        )
+
+    def forward(self, x):
+        assert isinstance(x, spconv.SparseConvTensor)
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.to_dense(x)
+        x = self.flatten(x)
+        x = self.fc(x)
+        x = x.view(-1, self.batch_size, 10)  # reshape back into time, batch, *inputs
+        return x
+
+
+class ExampleNetLocalZOOnce(nn.Module):
+    def __init__(self, batch_size, u_th, beta, conv_algorithm=spconv.ConvAlgo.Native,
+                 random_sampler: BaseOnceSampler = NormalOnceSampler):
+        """ similar to the prior one, but only sample once for each layer
+        """
+        super(ExampleNetLocalZOOnce, self).__init__()
+        self.batch_size = batch_size
+        self.conv_block1 = nn.Sequential(
+            spconv.SparseConv2d(2, 16, 5, bias=True, algo=conv_algorithm),
+            spconv.SparseBatchNorm(16, eps=1e-5, momentum=0.1),
+            spconv.SparseMaxPool2d(2, stride=2),
+            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=random_sampler(),)
+        )
+        self.conv_block2 = nn.Sequential(
+            spconv.SparseConv2d(16, 32, 5, bias=True, algo=conv_algorithm),
+            spconv.SparseBatchNorm(32, eps=1e-5, momentum=0.1),
+            spconv.SparseMaxPool2d(2, stride=2),
+            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=random_sampler(),)
+        )
+        self.to_dense = spconv.ToDense()  # convert the sparse tensor to dense tensor
+        self.flatten = nn.Flatten(start_dim=1)
+        self.fc = nn.Sequential(
+            nn.Linear(32 * 5 * 5, 10),
+            LeakyPlain(u_th=u_th, beta=beta, batch_size=batch_size)
+        )
+
+    def forward(self, x):
+        assert isinstance(x, spconv.SparseConvTensor)
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.to_dense(x)
+        x = self.flatten(x)
+        x = self.fc(x)
+        x = x.view(-1, self.batch_size, 10)  # reshape back into time, batch, *inputs
+        return x
