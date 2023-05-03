@@ -7,7 +7,7 @@ gpu_id = '3'
 sys.path.append(os.pardir)
 print(sys.path)
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
-from LocalZO.conv_models.modules import LeakyPlain, DummyConvSNN
+from LocalZO.conv_models.neurons import LeakyPlain, DummyConvSNN
 import torch
 from torch import nn
 from spconv import pytorch as spconv
@@ -22,56 +22,6 @@ from torch.nn.utils import clip_grad_norm_
 
 criterion = SF.mse_count_loss(correct_rate=0.8, incorrect_rate=0.2)
 criterion = SF.ce_rate_loss
-
-
-class SpconvNet(nn.Module):
-
-    def __init__(self, beta=0.5, u_th=0.1, batch_size=64):
-        """
-        plain implementation of spiking convolutional network
-
-        Args:
-            beta: drop rate for membrane potential
-            batch_size: batch size of input, should be the same as the batch size of the input data, so use drop_last=True in DataLoader
-            u_th: the threshold of membrane potential for firing
-        """
-        super(SpconvNet, self).__init__()
-        algo = spconv.ConvAlgo.Native
-        self.conv1 = spconv.SparseConv2d(in_channels=2, out_channels=12, kernel_size=5, algo=algo, bias=True)
-        self.pool1 = spconv.SparseMaxPool2d(kernel_size=2, stride=2, algo=algo,)
-        self.ac1 = LeakyPlain(u_th, beta, batch_size)
-        self.conv2 = spconv.SparseConv2d(in_channels=12, out_channels=32, kernel_size=5, algo=algo, bias=True)
-        self.pool2 = spconv.SparseMaxPool2d(kernel_size=2, stride=2, algo=algo)
-        self.ac2 = LeakyPlain(u_th, beta, batch_size)
-        self.to_dense = spconv.ToDense()
-        self.flatten = nn.Flatten(start_dim=1)
-        self.fc = nn.Linear(32 * 5 * 5, 10)
-        self.ac3 = LeakyPlain(u_th, beta, batch_size)
-        self.batch_size = batch_size
-
-    def forward(self, inputs):
-        assert isinstance(inputs, spconv.SparseConvTensor), 'inputs should be SparseConvTensor'
-        x = self.conv1(inputs)
-        x = self.pool1(x)
-        x = self.ac1(x)
-        x = self.conv2(x)
-        x = self.pool2(x)
-        x = self.ac2(x)
-        x = self.to_dense(x)
-        x = self.flatten(x)
-        x = self.fc(x)
-        x = self.ac3(x)
-        x = x.view(-1, self.batch_size, 10)
-        return x
-
-    def save(self, path):
-        torch.save(self.state_dict(), path)
-
-    @staticmethod
-    def load(path):
-        net = SpconvNet()
-        net.load_state_dict(torch.load(path))
-        return net
 
 
 def train(net,
