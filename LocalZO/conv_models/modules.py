@@ -3,11 +3,10 @@ from torch import nn
 from torch.autograd import Function
 from spconv import pytorch as spconv
 from typing import Tuple, Optional, Any
-from try_spconv import generate_sparse_input, sparseconv_to_coo, coo_to_sparseconv
-from functional import PlainLIFFunction
+from .utils import generate_sparse_input
+from .functional import PlainLIFFunction
 
-
-class PlainSNN(nn.Module):
+class LeakyPlain(nn.Module):
 
     def __init__(self, u_th, beta, batch_size):
         super().__init__()
@@ -16,6 +15,11 @@ class PlainSNN(nn.Module):
         self.u_th = u_th
 
     def forward(self, inputs: spconv.SparseConvTensor) -> spconv.SparseConvTensor:
+        if isinstance(inputs, torch.Tensor):
+            outputs = PlainLIFFunction.apply(inputs, self.batch_size, self.u_th, self.beta)
+            return outputs
+
+        # else
         inputs = inputs.dense()
         outputs = PlainLIFFunction.apply(inputs, self.batch_size, self.u_th, self.beta)
         return spconv.SparseConvTensor.from_dense(outputs.transpose(1, 3))
@@ -33,7 +37,7 @@ class DummyConvSNN(nn.Module):
             padding=1,
             algo=spconv.ConvAlgo.Native
         )
-        self.ac1 = PlainSNN(0.5, 0.5, 64)
+        self.ac1 = LeakyPlain(0.5, 0.5, 64)
         self.conv2 = spconv.SparseConv2d(
             in_channels=3,
             out_channels=3,
