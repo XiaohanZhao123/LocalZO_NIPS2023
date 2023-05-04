@@ -4,13 +4,20 @@ from torch.autograd import Function
 from spconv import pytorch as spconv
 from typing import Tuple, Optional, Any
 from .utils import generate_sparse_input
-from .functional import PlainLIFFunction, PlainLIFLocalZOMultiSample, PlainLIFLocalZO
-from .samplers import BaseSampler, BaseOnceSampler
+from .functional import \
+    (PlainLIFFunction,
+    PlainLIFLocalZOMultiSample,
+    PlainLIFLocalZOOnce,
+    PlainLIFFunctionProfile,
+    PlainLIFLocalZOOnceProfile)
+from .samplers import BaseSampler, BaseOnceSampler, NormalOnceSampler
+
+__all__ = ['LeakyPlain', 'LeakeyZOPlain', 'LeakyZOPlainOnce']
 
 
 class LeakyPlain(nn.Module):
 
-    def __init__(self, u_th, beta, batch_size):
+    def __init__(self, u_th, beta, batch_size, profile=False):
         """
         Leaky integrate-and-fire neuron model with plain implementation, i.e. no considering sparsity
         Simply transform the input into dense mode then reshape the input into batch_size * num_neurons * num_steps * num_channels
@@ -25,6 +32,7 @@ class LeakyPlain(nn.Module):
         self.batch_size = batch_size
         self.beta = beta
         self.u_th = u_th
+        self.forward_fn = PlainLIFFunctionProfile.apply if profile else PlainLIFFunction.apply
 
     def forward(self, inputs: spconv.SparseConvTensor) -> spconv.SparseConvTensor:
         if isinstance(inputs, torch.Tensor):
@@ -33,7 +41,7 @@ class LeakyPlain(nn.Module):
 
         # else
         inputs = inputs.dense()
-        outputs = PlainLIFFunction.apply(inputs, self.batch_size, self.u_th, self.beta)
+        outputs = self.forward_fn(inputs, self.batch_size, self.u_th, self.beta)
         return spconv.SparseConvTensor.from_dense(outputs.transpose(1, 3))
 
 
@@ -79,7 +87,7 @@ class LeakeyZOPlain(nn.Module):
 class LeakyZOPlainOnce(nn.Module):
     """only sample once to accelerate the training process"""
 
-    def __init__(self, u_th, beta, batch_size, random_sampler: BaseSampler, delta=0.01):
+    def __init__(self, u_th, beta, batch_size, random_sampler: NormalOnceSampler = NormalOnceSampler(), delta=0.01, profile=False):
         """
         Leaky integrate-and-fire neuron model with plain implementation using ZO to approximate gradient
 
@@ -97,17 +105,18 @@ class LeakyZOPlainOnce(nn.Module):
         self.u_th = u_th
         self.random_sampler: BaseOnceSampler = random_sampler
         self.delta = delta
+        self.forward_fn = PlainLIFLocalZOOnceProfile.apply if profile else PlainLIFLocalZOOnce.apply
 
     def forward(self, inputs):
         if isinstance(inputs, torch.Tensor):
             random_tangents = self.random_sampler.generate_random_tangents(inputs.shape, self.batch_size,
                                                                            device=inputs.device)
-            outputs = PlainLIFLocalZO.apply(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
+            outputs = self.forward_fn(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
             return outputs
 
         # else
         inputs = inputs.dense()
         random_tangents = self.random_sampler.generate_random_tangents(inputs.shape, self.batch_size,
                                                                        device=inputs.device)
-        outputs = PlainLIFLocalZO.apply(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
+        outputs = self.forward_fn(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
         return spconv.SparseConvTensor.from_dense(outputs.transpose(1, 3))
