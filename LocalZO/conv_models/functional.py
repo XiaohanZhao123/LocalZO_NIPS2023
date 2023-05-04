@@ -243,7 +243,7 @@ class PlainLIFFunctionProfile(Function):
 
         # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
-        print('the sparsity of the input grad is', calculate_sparsity(grad_inputs))
+        print('the sparsity of the output grad is', calculate_sparsity(grad_inputs))
         return grad_inputs, None, None, None
 
 
@@ -318,7 +318,7 @@ class PlainLIFLocalZOOnceProfile(Function):
 
             # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
-        print('the sparsity of the input grad is', calculate_sparsity(grad_inputs))
+        print('the sparsity of the output grad is', calculate_sparsity(grad_inputs))
         return grad_inputs, None, None, None, None, None
 
 
