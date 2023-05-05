@@ -1,0 +1,10 @@
+u_th: 0.5
+beta: 0.4
+
+get_models:
+  _target_: experiments.models.vgg.get_models
+  num_class: ${dataset.n_class}
+  batch_size: ${dataset.batch_size}
+  u_th: ${model.u_th}
+  beta: ${model.beta}
+  in_channel: 3

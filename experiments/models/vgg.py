@@ -7,6 +7,7 @@ from spconv import pytorch as spconv
 from LocalZO.conv_models.neurons import LeakyPlain, LeakeyZOPlain, LeakyZOPlainOnce
 from snntorch import surrogate
 from LocalZO.conv_models.samplers import NormalOnceSampler
+from snntorch import utils
 
 spike_grad = surrogate.sigmoid()
 
@@ -48,7 +49,7 @@ class VGGSNNTorch(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
-            nn.MaxPool2d(kernel_size=2, stride=2)
+            nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
         self.classifier = nn.Sequential(
@@ -119,3 +120,10 @@ class VGGSpconv(nn.Module):
         x = self.classifier(x)
         x = x.view(-1, self.batch_size, self.num_class)
         return x
+
+
+def get_models(batch_size, beta, num_class, u_th, in_channel=3):
+    torchnet = VGGSNNTorch(beta=beta, in_channel=in_channel, u_th=u_th, num_class=num_class).cuda()
+    spconvnet = VGGSpconv(in_channel=in_channel, u_th=u_th, num_class=num_class, beta=beta,
+                          batch_size=batch_size).cuda()
+    return spconvnet, torchnet

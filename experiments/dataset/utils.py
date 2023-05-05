@@ -27,3 +27,7 @@ class ConstantEncodingCollate:
     def repeat(tensor: torch.Tensor, num_steps):
         tensor = tensor.unsqueeze(0)
         return tensor.repeat(num_steps, *([1] * len(tensor.shape[1:])))
+
+
+def repeat(tensor, num_steps):
+    return tensor.unsqueeze(0).repeat(num_steps, *([1] * len(tensor.shape)))

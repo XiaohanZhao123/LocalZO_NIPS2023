@@ -1,0 +1,4 @@
+defaults:
+  - dataset: cifar10
+  - model: vgg
+  - optimizer: default

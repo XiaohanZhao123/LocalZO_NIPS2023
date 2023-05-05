@@ -1,0 +1,10 @@
+name: cifar10
+n_class: 10
+batch_size: 64
+constant_encoding: True
+num_step: 50
+
+get_dataset:
+  _target_: experiments.dataset.cifar10.get_dataset
+  root: '/home/zxh/remote/async_fgd/experiment_resources/dataset/cifar10'
+  batch_size: ${dataset.batch_size}

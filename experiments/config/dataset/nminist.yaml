@@ -1,0 +1,9 @@
+name: nminist
+n_class: 10
+batch_size: 64
+constant_encoding: False
+
+get_dataset:
+  _target_:
+    root: /home/zxh/data
+    batch_size: ${dataset.batch_size}

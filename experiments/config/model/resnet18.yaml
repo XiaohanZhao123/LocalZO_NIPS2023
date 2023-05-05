@@ -1,0 +1,9 @@
+u_th: 0.0
+beta: 0.9
+
+get_models:
+  _target_: experiments.models.resnet.get_models
+  num_class: ${dataset.n_class}
+  batch_size: ${dataset.batch_size}
+  u_th: ${model.u_th}
+  beta: ${model.beta}

@@ -67,7 +67,6 @@ def get_dataset():
 def grad_sparsity():
     spconv_net = SpconvNet(beta=0.5, u_th=0.8, batch_size=batch_size).cuda()
     spconvzo_net = ExampleNetLocalZOOnce(batch_size=batch_size, beta=0.5, u_th=0.8).cuda()
-
     train_loader = get_dataset()
     train_and_profile_spconv(spconv_net, train_loader, SF.mse_count_loss(correct_rate=0.8, incorrect_rate=0.2),
                              SF.ce_rate_loss)
