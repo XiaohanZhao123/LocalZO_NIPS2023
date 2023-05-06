@@ -41,7 +41,7 @@ class LeakyPlain(nn.Module):
 
         # else
         inputs = inputs.dense()
-        outputs = self.forward_fn(inputs, self.batch_size, self.u_th, self.beta)
+        outputs = PlainLIFFunction.apply(inputs, self.batch_size, self.u_th, self.beta)
         return spconv.SparseConvTensor.from_dense(outputs.transpose(1, 3))
 
 
@@ -105,18 +105,17 @@ class LeakyZOPlainOnce(nn.Module):
         self.u_th = u_th
         self.random_sampler: BaseOnceSampler = random_sampler
         self.delta = delta
-        self.forward_fn = PlainLIFLocalZOOnceProfile.apply if profile else PlainLIFLocalZOOnce.apply
 
     def forward(self, inputs):
         if isinstance(inputs, torch.Tensor):
             random_tangents = self.random_sampler.generate_random_tangents(inputs.shape, self.batch_size,
                                                                            device=inputs.device)
-            outputs = self.forward_fn(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
+            outputs = PlainLIFLocalZOOnce.apply(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
             return outputs
 
         # else
         inputs = inputs.dense()
         random_tangents = self.random_sampler.generate_random_tangents(inputs.shape, self.batch_size,
                                                                        device=inputs.device)
-        outputs = self.forward_fn(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
+        outputs = PlainLIFLocalZOOnce.apply(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
         return spconv.SparseConvTensor.from_dense(outputs.transpose(1, 3))

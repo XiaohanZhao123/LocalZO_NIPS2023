@@ -50,7 +50,7 @@ def train_and_profile_snntorch(net,
                                num_steps=6):
     if constant_encoding is True:
         assert num_steps > 0, 'num_steps must be greater than 0 when constant_encoding is True'
-    max_iter = 40
+    max_iter = 20
     time_list = []
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     for epoch in range(num_epochs):
@@ -74,7 +74,8 @@ def train_and_profile_snntorch(net,
             end = time.time()
             if i > 0:
                 time_list.append(end - start)
-            print(f'epoch: {epoch}, iter: {i}, loss: {loss.item()}, acc: {acc_fn(spk_out, labels)}')
+            # print(f'epoch: {epoch}, iter: {i}, loss: {loss.item()}, acc: {acc_fn(spk_out, labels)}')
+            print(f'time: {end - start}')
 
     mean_time = sum(time_list) / len(time_list)
     print(f'mean_time: {mean_time}')
@@ -94,7 +95,7 @@ def train_and_profile_spconv(net,
         net.load_state_dict(torch.load(save_dir))
     if constant_encoding is True:
         assert num_steps > 0, 'num_steps must be greater than 0 when constant_encoding is True'
-    max_iter = 150
+    max_iter = 20
     time_list = []
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     net.train()
@@ -119,8 +120,10 @@ def train_and_profile_spconv(net,
             end = time.time()
             if i > 0:
                 time_list.append(end - start)
-            print(f'epoch: {epoch}, iter: {i}, loss: {loss.item()}, acc: {acc_fn(output, labels)}')
+            print(f'time: {end - start}')
+            # print(f'epoch: {epoch}, iter: {i}, loss: {loss.item()}, acc: {acc_fn(output, labels)}')
 
-    torch.save(net.state_dict(), save_dir)
+    if save_dir:
+        torch.save(net.state_dict(), save_dir)
     mean_time = sum(time_list) / len(time_list)
     print(f'mean_time: {mean_time}')

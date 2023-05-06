@@ -9,15 +9,23 @@ def get_dataset(root, batch_size):
 
     frame_transform = transforms.Compose([
         transforms.Denoise(filter_time=10000),
-        transforms.ToFrame(sensor_size=sensor_size, time_window=1000),
+        transforms.ToFrame(sensor_size=sensor_size, time_window=30000),
     ])
 
+    print('start loading dataset')
     transform = torch.from_numpy
-    dvsguesture_frame = tonic.datasets.DVSGesture(save_to=root, transform=frame_transform, train=True)
-    dvsguesture_cached = tonic.DiskCachedDataset(dvsguesture_frame, cache_path='./cache/dvs_guesture', transform=transform)
-    train_loader = DataLoader(dataset=dvsguesture_cached, batch_size=batch_size, num_workers=4, pin_memory=True)
+    dvsguesture_frame = tonic.datasets.DVSGesture(save_to=root, transform=frame_transform, train=False)
+    print(dvsguesture_frame[0][0].shape)
+    print('load into cache')
+    dvsguesture_cached = tonic.DiskCachedDataset(dvsguesture_frame, cache_path='./cache/dvs', transform=transform)
+    train_loader = DataLoader(dataset=dvsguesture_cached,
+                              batch_size=batch_size, num_workers=4,
+                              collate_fn=tonic.collation.PadTensors(batch_first=False))
     return train_loader
 
 
+if __name__ == '__main__':
+    train_loader = get_dataset('/home/zxh/data', 64)
+    print(next(iter(train_loader))[0].shape)
 
 

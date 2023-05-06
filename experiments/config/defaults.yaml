@@ -2,3 +2,10 @@ defaults:
   - dataset: cifar10
   - model: vgg
   - optimizer: default
+
+
+
+dataset_map:
+  vgg: dvscifar10
+  resnet: cifar10
+  simplenet: dvsguesture

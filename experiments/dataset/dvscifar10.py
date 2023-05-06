@@ -12,12 +12,14 @@ def get_dataset(root, batch_size):
         transforms.ToFrame(sensor_size=sensor_size, time_window=1000),
     ])
 
-    transform = torch.from_numpy
-    dvscifar10_frame = tonic.datasets.CIFAR10DVS(save_to=root, transform=frame_transform)
+    # transform = torch.from_numpy
+    dvscifar10_frame = tonic.datasets.CIFAR10DVS(save_to=root, transform=None)
     dvscifar10_cached = tonic.DiskCachedDataset(dvscifar10_frame, cache_path='./cache/dvs', transform=transform)
     train_loader = DataLoader(dataset=dvscifar10_cached, batch_size=batch_size, num_workers=4, pin_memory=True)
-    return train_loader
+    return None
 
 
+if __name__ == '__main__':
+    get_dataset('/home/zxh/data', 64)
 
 
