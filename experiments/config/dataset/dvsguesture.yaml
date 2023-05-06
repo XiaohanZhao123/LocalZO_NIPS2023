@@ -1,9 +1,10 @@
 name: dvs_guesture
-n_class: 10
-batch_size: 64
+n_class: 11
+batch_size: 12
 constant_encoding: False
 
 get_dataset:
-  _target_:
-    root: /home/zxh/data
-    batch_size: ${dataset.batch_size}
+  _target_: experiments.dataset.dvsguesture.get_dataset
+  root: /home/zxh/data
+  batch_size: ${dataset.batch_size}
+  time_window: 60000

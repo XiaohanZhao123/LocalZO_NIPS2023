@@ -119,8 +119,17 @@ class VGGSpconv(nn.Module):
         return x
 
 
-def get_models(batch_size, beta, num_class, u_th, in_channel=3):
+def get_models(batch_size, beta, num_class, u_th, in_channel=2):
     torchnet = VGGSNNTorch(beta=beta, in_channel=in_channel, u_th=u_th, num_class=num_class).cuda()
     spconvnet = VGGSpconv(in_channel=in_channel, u_th=u_th, num_class=num_class, beta=beta,
                           batch_size=batch_size).cuda()
     return spconvnet, torchnet
+
+
+if __name__ == '__main__':
+    spconv_net, torchnet = get_models(batch_size=1, beta=0.3, num_class=10, u_th=1.0)
+    inputs = torch.randn(1, 2, 128, 128).cuda()
+    torchnet(inputs)
+    inputs = torch.randn(3, 1, 2, 128, 128).cuda()
+    outputs = spconv_net(inputs)
+    print(outputs.shape)

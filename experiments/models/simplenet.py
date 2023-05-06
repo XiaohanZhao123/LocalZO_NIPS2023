@@ -82,8 +82,8 @@ class SimpleNetSNNtorch(nn.Module):
 
 
 def get_model(batch_size, u_th, beta, num_class):
-    simplenet_spconv = SimpleNetSpconv(u_th=u_th, beta=beta, batch_size=batch_size, num_class=num_class)
-    simplenet_snntorch = SimpleNetSNNtorch(u_th=u_th, beta=beta)
+    simplenet_spconv = SimpleNetSpconv(u_th=u_th, beta=beta, batch_size=batch_size, num_class=num_class).cuda()
+    simplenet_snntorch = SimpleNetSNNtorch(u_th=u_th, beta=beta).cuda()
     return simplenet_spconv, simplenet_snntorch
 
 

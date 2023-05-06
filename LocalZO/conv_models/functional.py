@@ -164,7 +164,7 @@ class PlainLIFLocalZOOnce(Function):
         u = torch.abs(torch.stack(mem_rec[::-1], dim=0) - u_th)
         random_tangents.abs_()
         g_2_mask = (u < random_tangents * delta).float()
-        g_2 = random_tangents / 2 / delta * g_2_mask
+        g_2 = random_tangents.div_(2 * delta).mul_(g_2_mask)
         ctx.save_for_backward(g_2)
         outputs = torch.cat(outputs, dim=0)
         outputs.view(-1)[0] += 1

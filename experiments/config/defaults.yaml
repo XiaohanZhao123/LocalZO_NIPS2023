@@ -1,6 +1,6 @@
 defaults:
-  - dataset: cifar100
-  - model: resnet18
+  - dataset: dvsguesture
+  - model: simplenet
   - optimizer: default
 
 

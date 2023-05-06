@@ -1,5 +1,5 @@
-u_th: 0.2
-beta: 0.8
+u_th: 1.0
+beta: 0.5
 name: vgg
 
 get_models:
@@ -8,4 +8,4 @@ get_models:
   batch_size: ${dataset.batch_size}
   u_th: ${model.u_th}
   beta: ${model.beta}
-  in_channel: 3
+  in_channel: 2

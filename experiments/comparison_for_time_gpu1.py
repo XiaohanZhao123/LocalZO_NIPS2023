@@ -1,4 +1,4 @@
-gpu_idx = '3'
+gpu_idx = '1'
 import os
 import sys
 
@@ -22,6 +22,7 @@ def main(cfg):
     constant_encoding = cfg.dataset.constant_encoding
     num_steps = cfg.dataset.num_step if constant_encoding else None
     train_loader = call(cfg.dataset.get_dataset)
+    print('input shape:', train_loader.dataset[0][0].shape)
     spconv_model, snntorch_model = call(cfg.model.get_models)
     spconv_mean_time = train_and_profile_spconv(net=spconv_model,
                                                 train_loader=train_loader,

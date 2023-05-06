@@ -1,9 +1,10 @@
 name: dvs_cifar10
 n_class: 10
-batch_size: 64
+batch_size: 8
 constant_encoding: False
 
 get_dataset:
-  _target_:
-    root: /home/zxh/data
-    batch_size: ${dataset.batch_size}
+  _target_: experiments.dataset.dvscifar10.get_dataset
+  root: /home/zxh/data
+  batch_size: ${dataset.batch_size}
+  time_window: 9000

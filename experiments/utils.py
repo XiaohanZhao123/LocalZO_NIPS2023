@@ -5,6 +5,7 @@ import time
 import snntorch.functional as SF
 from dataset.utils import repeat
 from torch import nn
+from models.simplenet import SimpleNetSNNtorch
 import os
 import sys
 
@@ -30,6 +31,7 @@ def real_reset(net: nn.Module):
     Returns:
 
     """
+
     for layer in net.children():
         if isinstance(layer, torch.nn.Sequential):
             if isinstance(layer[0], torch.nn.Sequential):
@@ -59,7 +61,7 @@ def train_and_profile_snntorch(net,
                 break
             if constant_encoding:
                 x = repeat(x, num_steps)
-
+            print('input shape', x.shape)
             net.train()
             optimizer.zero_grad()
             x = x.cuda()
