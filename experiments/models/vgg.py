@@ -31,34 +31,32 @@ class VGGSNNTorch(nn.Module):
         self.conv_layers = nn.Sequential(
             nn.Conv2d(in_channels=self.in_channel, out_channels=64, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
+
             nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
+            snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
             nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
+
             nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=512, out_features=4096),
-            snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
-            nn.Linear(in_features=4096, out_features=4096),
-            snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True),
-            nn.Linear(in_features=4096, out_features=self.num_class),
-            snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True, output=True)
+            nn.Linear(in_features=512*3*3, out_features=self.num_class),
+            snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True, output=True),
         )
 
     def forward(self, x):
@@ -79,37 +77,36 @@ class VGGSpconv(nn.Module):
 
         self.conv_layers = nn.Sequential(
             spconv.SparseConv2d(in_channel, 64, 3, padding=1, algo=algo),
-            spconv.SparseMaxPool2d(2, 2, algo=algo),
             LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
             spconv.SparseConv2d(64, 128, 3, padding=1, algo=algo),
             spconv.SparseMaxPool2d(2, 2, algo=algo),
             LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
+
             spconv.SparseConv2d(128, 256, 3, padding=1, algo=algo),
-            spconv.SparseMaxPool2d(2, 2, algo=algo),
             LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
             spconv.SparseConv2d(256, 512, 3, padding=1, algo=algo),
             spconv.SparseMaxPool2d(2, 2, algo=algo),
             LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
+
             spconv.SparseConv2d(512, 512, 3, padding=1, algo=algo),
-            spconv.SparseMaxPool2d(2, 2, algo=algo),
             LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
             spconv.SparseConv2d(512, 512, 3, padding=1, algo=algo),
             spconv.SparseMaxPool2d(2, 2, algo=algo),
             LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
+
+            spconv.SparseConv2d(512, 512, 3, padding=1, algo=algo),
+            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
             spconv.SparseConv2d(512, 512, 3, padding=1, algo=algo),
             spconv.SparseMaxPool2d(2, 2, algo=algo),
-            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta)
+            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
+
         )
 
         self.classifier = nn.Sequential(
             spconv.ToDense(),
             nn.Flatten(),
-            nn.Linear(in_features=512, out_features=4096),
-            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
-            nn.Linear(in_features=4096, out_features=4096),
-            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size, random_sampler=sampler(), delta=delta),
-            nn.Linear(in_features=4096, out_features=self.num_class),
-            LeakyPlain(u_th=u_th, beta=beta, batch_size=batch_size, ),
+            nn.Linear(in_features=512*3*3, out_features=self.num_class),
+            LeakyPlain(u_th=u_th, beta=beta, batch_size=batch_size),
         )
 
     def forward(self, x):

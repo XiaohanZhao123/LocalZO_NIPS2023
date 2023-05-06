@@ -8,8 +8,8 @@ from torchvision.models import resnet18
 
 def get_dataset(root, batch_size,):
     transform = transforms.Compose([
-        transforms.CenterCrop(32),
-        transforms.Resize(32),
+        transforms.CenterCrop(48),
+        transforms.Resize(48),
         transforms.ToTensor(),
         ])
     dataset = datasets.CIFAR10(root=root, train=True, download=True, transform=transform)
