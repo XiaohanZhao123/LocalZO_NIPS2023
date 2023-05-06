@@ -1,6 +1,6 @@
 defaults:
-  - dataset: dvsguesture
-  - model: simplenet
+  - dataset: dvscifar10
+  - model: vgg
   - optimizer: default
 
 

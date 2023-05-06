@@ -7,6 +7,7 @@ from torch.autograd import Function
 lif_save_dirctory = './lif.txt'
 lif_zo_save_dirctory = './lifzo.txt'
 
+layer_idx = 0
 
 class PlainLIFFunction(Function):
     """plain implementation of LIF neuron, ignoring the sparsity, using atan for surrogate gradient"""
@@ -34,10 +35,13 @@ class PlainLIFFunction(Function):
 
     @staticmethod
     def backward(ctx: Any, grad_outputs: Any) -> Any:
+        global layer_idx
+        layer_idx += 1
         # print('the sparsity of the tensor is', torch.sum(grad_outputs == 0) / torch.numel(grad_outputs))
         batch_size, u_th, beta = ctx.constant
         grad_outputs = grad_outputs.view(-1, batch_size, *grad_outputs.size()[1:])  # make it time first
         grad_outputs = torch.flip(grad_outputs, dims=[0])
+        print(f'layer_idx: {layer_idx}, sparsity_of_input_grad: {compute_sparsity(grad_outputs)}')
         mem_rec = ctx.saved_tensors[0]
         # compute element-wise gradient
         grad_prev_memberance_potential = 0  # the gradient of the previous memberance potential
@@ -52,6 +56,7 @@ class PlainLIFFunction(Function):
 
         # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
+        print(f'layer_idx: {layer_idx}, sparsity_of_output_grad: {compute_sparsity(grad_inputs)}')
         return grad_inputs, None, None, None
 
 
@@ -182,9 +187,11 @@ class PlainLIFLocalZOOnce(Function):
         Returns:
 
         """
+        global layer_idx
         batch_size, u_th, beta = ctx.constant
         grad_heavisides = ctx.saved_tensors[0]  # gradients for heaviside function
         grad_outputs = grad_outputs.view(-1, batch_size, *grad_outputs.size()[1:])  # make it time first
+        print(f'layer_idx: {layer_idx}, sparsity_of_input_grad: {compute_sparsity(grad_outputs)}')
         grad_outputs = torch.flip(grad_outputs, dims=[0])
         grad_prev_memberance_potential = 0  # the gradient of the previous memberance potential
         grad_inputs = []
@@ -196,6 +203,7 @@ class PlainLIFLocalZOOnce(Function):
 
             # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
+        print(f'layer_idx: {layer_idx}, sparsity_of_output_grad: {compute_sparsity(grad_inputs)}')
         return grad_inputs, None, None, None, None, None
 
 
@@ -228,7 +236,7 @@ class PlainLIFFunctionProfile(Function):
         # print('the sparsity of the tensor is', torch.sum(grad_outputs == 0) / torch.numel(grad_outputs))
         batch_size, u_th, beta = ctx.constant
         grad_outputs = grad_outputs.view(-1, batch_size, *grad_outputs.size()[1:])  # make it time first
-        print('the sparsity of the input grad is', calculate_sparsity(grad_outputs))
+        print('the sparsity of the input grad is', compute_sparsity(grad_outputs))
         grad_outputs = torch.flip(grad_outputs, dims=[0])
         mem_rec = ctx.saved_tensors[0]
         # compute element-wise gradient
@@ -244,7 +252,7 @@ class PlainLIFFunctionProfile(Function):
 
         # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
-        print('the sparsity of the output grad is', calculate_sparsity(grad_inputs))
+        print('the sparsity of the output grad is', compute_sparsity(grad_inputs))
         return grad_inputs, None, None, None
 
 
@@ -307,7 +315,7 @@ class PlainLIFLocalZOOnceProfile(Function):
         batch_size, u_th, beta = ctx.constant
         grad_heavisides = ctx.saved_tensors[0]  # gradients for heaviside function
         grad_outputs = grad_outputs.view(-1, batch_size, *grad_outputs.size()[1:])  # make it time first
-        print('the sparsity of the input grad is', calculate_sparsity(grad_outputs))
+        print('the sparsity of the input grad is', compute_sparsity(grad_outputs))
         grad_outputs = torch.flip(grad_outputs, dims=[0])
         grad_prev_memberance_potential = 0  # the gradient of the previous memberance potential
         grad_inputs = []
@@ -319,7 +327,7 @@ class PlainLIFLocalZOOnceProfile(Function):
 
             # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
-        print('the sparsity of the output grad is', calculate_sparsity(grad_inputs))
+        print('the sparsity of the output grad is', compute_sparsity(grad_inputs))
         return grad_inputs, None, None, None, None, None
 
 
@@ -339,5 +347,5 @@ def sigmoid_grad(x):
     return sigmoid_x * (1 - sigmoid_x)
 
 
-def calculate_sparsity(x):
+def compute_sparsity(x):
     return torch.sum((x == 0).float()) / x.numel()

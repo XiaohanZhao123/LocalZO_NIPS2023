@@ -61,7 +61,6 @@ def train_and_profile_snntorch(net,
                 break
             if constant_encoding:
                 x = repeat(x, num_steps)
-            print('input shape', x.shape)
             net.train()
             optimizer.zero_grad()
             x = x.cuda()
