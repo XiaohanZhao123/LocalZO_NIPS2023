@@ -1,5 +1,6 @@
-u_th: 0.4
+u_th: 0.2
 beta: 0.8
+name: vgg
 
 get_models:
   _target_: experiments.models.vgg.get_models

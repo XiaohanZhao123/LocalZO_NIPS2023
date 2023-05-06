@@ -17,7 +17,7 @@ def get_dataset(root, batch_size):
     dvsguesture_frame = tonic.datasets.DVSGesture(save_to=root, transform=frame_transform, train=False)
     print(dvsguesture_frame[0][0].shape)
     print('load into cache')
-    dvsguesture_cached = tonic.DiskCachedDataset(dvsguesture_frame, cache_path='./cache/dvs', transform=transform)
+    dvsguesture_cached = tonic.DiskCachedDataset(dvsguesture_frame, cache_path='./cache/dvsguesture', transform=transform)
     train_loader = DataLoader(dataset=dvsguesture_cached,
                               batch_size=batch_size, num_workers=4,
                               collate_fn=tonic.collation.PadTensors(batch_first=False))

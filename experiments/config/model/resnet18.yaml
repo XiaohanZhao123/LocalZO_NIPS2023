@@ -1,5 +1,6 @@
-u_th: 0.0
-beta: 0.9
+u_th: 1.0
+beta: 0.5
+name: resent18
 
 get_models:
   _target_: experiments.models.resnet.get_models

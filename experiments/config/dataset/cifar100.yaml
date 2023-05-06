@@ -1,10 +1,10 @@
 name: cifar100
-n_class: 10
-batch_size: 64
+n_class: 100
+batch_size: 32
 constant_encoding: True
-num_step: 100
+num_step: 50
 
 get_dataset:
-  _target_:
-    root: /home/zxh/data
-    batch_size: ${dataset.batch_size}
+  _target_: experiments.dataset.cifar100.get_dataset
+  root: /home/zxh/data/cifar100
+  batch_size: ${dataset.batch_size}

@@ -1,6 +1,6 @@
 name: cifar10
 n_class: 10
-batch_size: 16
+batch_size: 32
 constant_encoding: True
 num_step: 50
 

@@ -1,6 +1,6 @@
 defaults:
-  - dataset: cifar10
-  - model: vgg
+  - dataset: cifar100
+  - model: resnet18
   - optimizer: default
 
 
@@ -9,3 +9,5 @@ dataset_map:
   vgg: dvscifar10
   resnet: cifar10
   simplenet: dvsguesture
+
+gpu_idx: 1

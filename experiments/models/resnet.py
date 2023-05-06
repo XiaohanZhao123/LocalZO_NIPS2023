@@ -28,6 +28,7 @@ class ResBlock(nn.Module):
             batchnorm_cls:the class of batch normalization layer
         """
         super(ResBlock, self).__init__()
+
         self.left = nn.Sequential(
             conv_cls(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=stride, padding=1,
                      bias=False),
@@ -47,7 +48,7 @@ class ResBlock(nn.Module):
             )
         self.snn_layer = snn_cls()
 
-    def forward(self, x):
+    def forward(self, x: spconv.SparseConvTensor):
         out = self.left(x)
         if isinstance(x, spconv.SparseConvTensor):
             out = out.dense() + self.shortcut(x).dense()
@@ -84,11 +85,10 @@ class ResNet18Spconv(nn.Module):
         assert snn_cls in [LeakyPlain, LeakyZOPlainOnce], 'snn_cls must be LeakyPlain or LeakyZOPlainOnce'
         snn_cls = functools.partial(snn_cls, u_th=u_th, beta=beta, batch_size=batch_size, )
         self.in_channel = 64
-        self.conv1 = spconv.SparseSequential(
-            conv_cls(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False),
-            spconv.SparseMaxPool2d(kernel_size=3, stride=2, padding=1, algo=algo, ),
-            batchnorm_cls(64),
-            nn.ReLU()
+        self.conv1 = nn.Sequential(
+            conv_cls(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1, bias=True),
+            spconv.SparseAvgPool2d(kernel_size=3, stride=2, padding=1, algo=algo, ),
+            LeakyZOPlainOnce(u_th=u_th, beta=beta, batch_size=batch_size)
         )
         self.layer1 = self.make_layer(64, 2, 1, conv_cls, batchnorm_cls, snn_cls, )
         self.layer2 = self.make_layer(128, 2, 2, conv_cls, batchnorm_cls, snn_cls, )

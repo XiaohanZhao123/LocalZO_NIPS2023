@@ -29,6 +29,7 @@ class PlainLIFFunction(Function):
 
         ctx.save_for_backward(torch.stack(mem_rec[::-1], dim=0) - u_th)
         outputs = torch.cat(outputs, dim=0)
+        outputs.view(-1)[0] += 1
         return outputs
 
     @staticmethod
@@ -147,7 +148,6 @@ class PlainLIFLocalZOOnce(Function):
         """
         ctx.constant = (batch_size, u_th, beta)
         inputs = inputs.view(-1, batch_size, *inputs.size()[1:])  # make it time first
-        grad_heavisides = []  # gradients for the heaviside function
         prev_memberance_potential = 0
         prev_output = 0
         outputs = []
@@ -167,6 +167,7 @@ class PlainLIFLocalZOOnce(Function):
         g_2 = random_tangents / 2 / delta * g_2_mask
         ctx.save_for_backward(g_2)
         outputs = torch.cat(outputs, dim=0)
+        outputs.view(-1)[0] += 1
         return outputs
 
     @staticmethod

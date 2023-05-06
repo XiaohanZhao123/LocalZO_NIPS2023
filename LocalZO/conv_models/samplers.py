@@ -52,4 +52,4 @@ class NormalOnceSampler(BaseOnceSampler):
     def generate_random_tangents(self, inputs_shape: torch.Tensor, batch_size: int,
                                  device) -> torch.Tensor:
         output_shape = (inputs_shape[0] // batch_size,) + (batch_size,) + inputs_shape[1:]
-        return torch.randn(output_shape, device=device)
+        return torch.randn(output_shape, device=device) * 0.1
