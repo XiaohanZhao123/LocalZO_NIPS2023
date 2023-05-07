@@ -1,8 +1,9 @@
-from torch import nn
 import spconv.pytorch as spconv
+import torch
+from torch import nn
+
 from LocalZO.conv_models.neurons import LeakyPlain, LeakeyZOPlain, LeakyZOPlainOnce
 from LocalZO.conv_models.samplers import BaseSampler, NormalSampler, NormalOnceSampler, BaseOnceSampler
-import torch
 
 
 class SimpleConvNet(nn.Module):

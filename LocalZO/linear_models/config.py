@@ -1,4 +1,5 @@
 import torch
+
 torch.set_num_threads(1)
 
 CONFIG_FASHION_MNIST = {
@@ -16,7 +17,7 @@ CONFIG_FASHION_MNIST = {
     "th": 1.,  # Regular threshold
     "delta": 0.05,
     "sample_size_zo": 1,
-    #"b_th": 1- 0.05,  # Backprop threshold, in the paper B_th = 1.-b_th, inferred in init()
+    # "b_th": 1- 0.05,  # Backprop threshold, in the paper B_th = 1.-b_th, inferred in init()
     "lr": 2e-4,
     "betas": (0.9, 0.999),
     "seed": 0,
@@ -36,7 +37,6 @@ CONFIG_FASHION_MNIST = {
     "p_up": 1,
 }
 
-
 CONFIG_N_MNIST = {
     "nb_epochs": 10,
     "nb_inputs": 34 * 34,
@@ -52,7 +52,7 @@ CONFIG_N_MNIST = {
     "th": 1.,  # Regular threshold
     "delta": 0.05,
     "sample_size_zo": 1,
-    #"b_th": 1- 0.05,  # Backprop threshold, in the paper B_th = 1.-b_th, inferred in init()
+    # "b_th": 1- 0.05,  # Backprop threshold, in the paper B_th = 1.-b_th, inferred in init()
     "lr": 2e-4,
     "betas": (0.9, 0.999),
     "seed": 0,
@@ -72,7 +72,6 @@ CONFIG_N_MNIST = {
     "p_up": 1,
 }
 
-
 CONFIG_SHD = {
     "nb_epochs": 10,
     "nb_inputs": 700,
@@ -88,7 +87,7 @@ CONFIG_SHD = {
     "th": 1.,  # Regular threshold
     "delta": 0.05,
     "sample_size_zo": 1,
-    #"b_th": 1- 0.05,  # Backprop threshold, in the paper B_th = 1.-b_th, inferred in init()
+    # "b_th": 1- 0.05,  # Backprop threshold, in the paper B_th = 1.-b_th, inferred in init()
     "lr": 1e-3,
     "betas": (0.9, 0.999),
     "seed": 0,
@@ -109,8 +108,3 @@ CONFIG_SHD = {
 }
 
 CONFIGS = {'fmnist': CONFIG_FASHION_MNIST, 'nmnist': CONFIG_N_MNIST, 'SHD': CONFIG_SHD}
-
-
-
-
-

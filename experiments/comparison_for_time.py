@@ -7,7 +7,6 @@ os.environ['CUDA_VISIBLE_DEVICES'] = gpu_idx
 
 import torch
 from utils import train_and_profile_snntorch, train_and_profile_spconv
-from snntorch import functional as SF
 import hydra
 from hydra.utils import call
 

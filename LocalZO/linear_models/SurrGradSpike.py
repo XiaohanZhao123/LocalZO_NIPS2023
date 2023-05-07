@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -58,7 +58,7 @@ class normal(torch.autograd.Function):
         (input_,) = ctx.saved_tensors
         grad_input = grad_output.clone()
         grad = grad_input * torch.exp(-(input_ ** 2) / (2 * (normal.delta ** 2))) / (
-                    normal.delta * torch.sqrt(2 * torch.tensor(np.pi, device=device, dtype=torch.float)))
+                normal.delta * torch.sqrt(2 * torch.tensor(np.pi, device=device, dtype=torch.float)))
         return grad, None
 
 

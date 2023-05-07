@@ -1,17 +1,19 @@
+import json
+import os
+import pickle
+import time
+from shutil import copyfile
+
+import matplotlib.pyplot as plt
+import numpy as np
+import s3gd_cuda
+import tables
 import torch
 import torchvision
-import numpy as np
-import os
-import time
-import s3gd_cuda
-import matplotlib.pyplot as plt
-from shutil import copyfile
-import pickle
 from scipy import stats
-import tables
-import json
-import SurrGradSpike
 from torch.distributions.laplace import Laplace
+
+import SurrGradSpike
 
 torch.set_num_threads(1)
 from config import CONFIGS
@@ -32,8 +34,8 @@ def open_file(hdf5_file_path):
     labels = fileh.root.labels
     return fileh, units, times, labels
 
-def load_dataset(prs):
 
+def load_dataset(prs):
     fileh_train = None
     fileh_test = None
     if prs['dataset_id'] == 'fmnist':
@@ -138,7 +140,6 @@ def sparse_data_generator_torchvision(X, y, prs, shuffle=True):
 
 
 def sparse_data_generator_h5(X, y, prs, shuffle=True):
-
     batch_size = prs['batch_size']
     nb_steps = prs['nb_steps']
     nb_units = prs['nb_inputs']
@@ -166,10 +167,10 @@ def sparse_data_generator_h5(X, y, prs, shuffle=True):
 
         coo = [[] for i in range(3)]
         for bc, idx in enumerate(batch_index):
-            ts = (np.round(times[idx]*1./time_step).astype(np.int))
+            ts = (np.round(times[idx] * 1. / time_step).astype(np.int))
             us = units[idx]
-            if prs['dataset_id']=='nmnist':
-                us = us % (34*34)
+            if prs['dataset_id'] == 'nmnist':
+                us = us % (34 * 34)
 
             # Constrain spike length
             idxs = (ts < nb_steps)
@@ -196,25 +197,27 @@ def sparse_data_generator_h5(X, y, prs, shuffle=True):
 
 ############################################ REGULARISATION LOSSES ############################################4
 def loss_upper(spikes, prs, nb_hidden):
-    tmp = (1./nb_hidden)*spikes.sum(1).sum(1) - prs['f_upper']  # Average number of spikes per neuron
-    loss_upper = prs['lambda_upper'] * ((torch.clamp(tmp, min=0.))**prs['p_up'])
+    tmp = (1. / nb_hidden) * spikes.sum(1).sum(1) - prs['f_upper']  # Average number of spikes per neuron
+    loss_upper = prs['lambda_upper'] * ((torch.clamp(tmp, min=0.)) ** prs['p_up'])
     return loss_upper
+
 
 def loss_lower(spikes, prs, nb_hidden):
     tmp = prs['f_lower'] - spikes.sum(1)
-    tmp = (torch.clamp(tmp, min=0.))**2
+    tmp = (torch.clamp(tmp, min=0.)) ** 2
     loss_lower = prs['lambda_lower'] * (tmp.sum(1))
     return loss_lower / nb_hidden
 
+
 def loss_reg(spikes, prs, hidden_level=0):
-    if hidden_level==0:
+    if hidden_level == 0:
         nb_hidden = prs['nb_hidden']
     else:
         nb_hidden = prs['nb_hidden2']
     l_up = loss_upper(spikes, prs, nb_hidden)
     l_low = loss_lower(spikes, prs, nb_hidden)
     l_reg = (l_up + l_low).sum()
-    return (1./prs['batch_size'])*l_reg
+    return (1. / prs['batch_size']) * l_reg
 
 
 ############################################ NETWORK INIT ############################################
@@ -236,29 +239,28 @@ def init(prs):
     prs['th'] = prs.get('th', CONFIG['th'])
     prs['delta'] = prs.get('delta', CONFIG['delta'])
     prs['sample_size_zo'] = prs.get('sample_size_zo', CONFIG['sample_size_zo'])
-    
+
     if prs['sample_size_zo'] == 1:
         if prs['surrogate'] == 'normal':
-            prs['b_th'] = 1- prs['delta']*0.7978
+            prs['b_th'] = 1 - prs['delta'] * 0.7978
         elif prs['surrogate'] == 'laplace':
-            prs['b_th'] = 1- prs['delta']*0.707
+            prs['b_th'] = 1 - prs['delta'] * 0.707
         elif prs['surrogate'] == 'uniform':
-            prs['b_th'] = 1- prs['delta']*0.866
+            prs['b_th'] = 1 - prs['delta'] * 0.866
         elif prs['surrogate'] == 'sigmoid':
-            prs['b_th'] = 1- prs['delta']*0.7659
+            prs['b_th'] = 1 - prs['delta'] * 0.7659
         elif prs['surrogate'] == 'fsigmoid':
-            prs['b_th'] = 1- 0.0461
+            prs['b_th'] = 1 - 0.0461
     elif prs['sample_size_zo'] == 5:
         if prs['surrogate'] == 'normal':
-            prs['b_th'] = 1- prs['delta']*1.5698
+            prs['b_th'] = 1 - prs['delta'] * 1.5698
         elif prs['surrogate'] == 'laplace':
-            prs['b_th'] = 1- prs['delta']*1.615
+            prs['b_th'] = 1 - prs['delta'] * 1.615
         elif prs['surrogate'] == 'uniform':
-            prs['b_th'] = 1- prs['delta']*1.443
+            prs['b_th'] = 1 - prs['delta'] * 1.443
     else:
         print('Please supply equivalent b_th in the config file.')
-        prs['b_th'] = prs.get('b_th', CONFIG['b_th'])        
-        
+        prs['b_th'] = prs.get('b_th', CONFIG['b_th'])
 
     prs['weight_multiplier'] = prs.get('weight_multiplier', CONFIG['weight_multiplier'])
     prs['tau_mem'] = prs.get('tau_mem', CONFIG['tau_mem'])
@@ -275,7 +277,7 @@ def init(prs):
     prs['f_upper'] = prs.get('f_upper', CONFIG['f_upper'])
     prs['f_lower'] = prs.get('f_lower', CONFIG['f_lower'])
     prs['p_up'] = prs.get('p_up', CONFIG['p_up'])
-    
+
     if torch.cuda.is_available():
         prs['device'] = 'cuda'
     else:
@@ -321,6 +323,7 @@ def init(prs):
 
     return fileh_train, fileh_test, x_train, x_test, y_train, y_test, prs, params
 
+
 ############################################ LAYERS ############################################
 def SNNReadout(spk_rec, weight, prs):
     batch_size = prs['batch_size']
@@ -333,11 +336,12 @@ def SNNReadout(spk_rec, weight, prs):
     out = torch.zeros((batch_size, nb_outputs), device=device, dtype=dtype)
     out_rec = [out]
     for t in range(nb_steps - 1):
-        new_out = prs['beta_readout'] * out + (1-prs['beta_readout'])*h2[:, t, :]
+        new_out = prs['beta_readout'] * out + (1 - prs['beta_readout']) * h2[:, t, :]
         out = new_out
         out_rec.append(out)
     out_rec = torch.stack(out_rec, dim=1)
     return out_rec
+
 
 def SNNLayerOrig(inputs, weight, dummy, prs):
     batch_size = prs['batch_size']
@@ -377,11 +381,10 @@ def SNNLayerOrig(inputs, weight, dummy, prs):
     spk_rec = torch.stack(spk_rec, dim=1)
 
     b_th = prs['b_th']
-    aout_idxs = torch.nonzero(torch.logical_and(mem_rec > b_th,  mem_rec < 2. * th - b_th))  # Indices of mem_rec above threshold mask [b, t, j]
-    
+    aout_idxs = torch.nonzero(torch.logical_and(mem_rec > b_th,
+                                                mem_rec < 2. * th - b_th))  # Indices of mem_rec above threshold mask [b, t, j]
+
     return spk_rec, aout_idxs
-
-
 
 
 class SparseZOLayer(torch.autograd.Function):
@@ -429,40 +432,40 @@ class SparseZOLayer(torch.autograd.Function):
                 mem_rec.append(mem)
                 spk_rec.append(out)
 
-            mem_rec = torch.stack(mem_rec, dim=1)-th
+            mem_rec = torch.stack(mem_rec, dim=1) - th
             spk_rec = torch.stack(spk_rec, dim=1)
             spk_trace = torch.stack(spk_trace, dim=1)
 
             # Sampling z and compare
-            t_shape =(sample_size_zo,)+mem_rec.size()
-            
+            t_shape = (sample_size_zo,) + mem_rec.size()
+
             if prs['surrogate'] == 'normal':
                 abs_z = torch.abs(torch.randn(t_shape, device=device, dtype=dtype))
-                t=torch.abs(mem_rec[None,:,:,:])< abs_z*delta
-                grad=torch.mean(t*abs_z, dim=0)/(2*delta)
+                t = torch.abs(mem_rec[None, :, :, :]) < abs_z * delta
+                grad = torch.mean(t * abs_z, dim=0) / (2 * delta)
             elif prs['surrogate'] == 'laplace':
-                lp = Laplace(torch.tensor([0.0]).to(device=device, dtype=dtype), torch.tensor([1.0/np.sqrt(2)]).to(device=device, dtype=dtype))
+                lp = Laplace(torch.tensor([0.0]).to(device=device, dtype=dtype),
+                             torch.tensor([1.0 / np.sqrt(2)]).to(device=device, dtype=dtype))
                 abs_z = torch.abs(torch.squeeze(lp.sample(sample_shape=t_shape)))
-                t=torch.abs(mem_rec[None,:,:,:])< abs_z*delta
-                grad=torch.mean(t*abs_z, dim=0)/(2*delta)
+                t = torch.abs(mem_rec[None, :, :, :]) < abs_z * delta
+                grad = torch.mean(t * abs_z, dim=0) / (2 * delta)
             elif prs['surrogate'] == 'uniform':
-                abs_z = torch.abs(2*np.sqrt(3)*torch.rand(t_shape, device=device, dtype=dtype)-np.sqrt(3))
-                t=torch.abs(mem_rec[None,:,:,:])< abs_z*delta
-                grad=torch.mean(t*abs_z, dim=0)/(2*delta)
+                abs_z = torch.abs(2 * np.sqrt(3) * torch.rand(t_shape, device=device, dtype=dtype) - np.sqrt(3))
+                t = torch.abs(mem_rec[None, :, :, :]) < abs_z * delta
+                grad = torch.mean(t * abs_z, dim=0) / (2 * delta)
             elif prs['surrogate'] == 'sigmoid':
-                abs_z = torch.abs(inv_cdf[torch.randint(high=len(inv_cdf), size= t_shape, device=device)])
-                t=torch.abs(mem_rec[None,:,:,:])< abs_z*delta
-                grad=torch.mean(t*abs_z, dim=0)/(2*delta)
+                abs_z = torch.abs(inv_cdf[torch.randint(high=len(inv_cdf), size=t_shape, device=device)])
+                t = torch.abs(mem_rec[None, :, :, :]) < abs_z * delta
+                grad = torch.mean(t * abs_z, dim=0) / (2 * delta)
             elif prs['surrogate'] == 'fsigmoid':
-                k=100
-                c=2/k
-                abs_z = torch.abs(inv_cdf[torch.randint(high=len(inv_cdf), size= t_shape, device=device)])
-                t=torch.abs(mem_rec[None,:,:,:])< abs_z*delta
-                grad=torch.mean(c*t/abs_z, dim=0)/(2*delta)    #alpha = -1
-            
+                k = 100
+                c = 2 / k
+                abs_z = torch.abs(inv_cdf[torch.randint(high=len(inv_cdf), size=t_shape, device=device)])
+                t = torch.abs(mem_rec[None, :, :, :]) < abs_z * delta
+                grad = torch.mean(c * t / abs_z, dim=0) / (2 * delta)  # alpha = -1
 
             aout_idxs = torch.nonzero(grad)
-            nz_grad =grad[aout_idxs[:, 0], aout_idxs[:, 1], aout_idxs[:, 2]]
+            nz_grad = grad[aout_idxs[:, 0], aout_idxs[:, 1], aout_idxs[:, 2]]
             # Indices out
             aout_b = aout_idxs[:, 0]
             aout_t = aout_idxs[:, 1]
@@ -496,9 +499,9 @@ class SparseZOLayer(torch.autograd.Function):
         aout_b = aout_b[grad_output_idxs]
         aout_t = aout_t[grad_output_idxs]
         aout_i = aout_i[grad_output_idxs]
-        #aout_mem = aout_mem[grad_output_idxs]
+        # aout_mem = aout_mem[grad_output_idxs]
         nz_grad = nz_grad[grad_output_idxs]
-        if grad_output.numel()==0:
+        if grad_output.numel() == 0:
             grad_weights = torch.zeros_like(weight)
             grad_input = torch.zeros((batch_size, nb_steps, nb_inputs), device=grad_output.device)
             return grad_input, grad_weights, None, None
@@ -521,10 +524,10 @@ class SparseZOLayer(torch.autograd.Function):
             j = (bjt - b * nb_hidden * nb_steps) // nb_steps
             ts_out = bjt - b * nb_hidden * nb_steps - j * nb_steps
             bj = b * nb_hidden + j
-            aout_bj_freqs = torch.bincount(bj, minlength=batch_size*nb_hidden)  # How many t for a given b and j
+            aout_bj_freqs = torch.bincount(bj, minlength=batch_size * nb_hidden)  # How many t for a given b and j
             idxs = torch.nonzero(aout_bj_freqs)  # Where to put the results
             ends = torch.cumsum(aout_bj_freqs[idxs], dim=0) - 1  # Indices
-            bj_ends = torch.full((batch_size*nb_hidden,), -1, device="cuda")
+            bj_ends = torch.full((batch_size * nb_hidden,), -1, device="cuda")
             bj_ends[idxs] = ends
 
             # Find indices to start from and frequencies (input)
@@ -558,43 +561,44 @@ class SparseZOLayer(torch.autograd.Function):
             # Get starts for each bj
             bM_starts = torch.roll(bM_freqs, 1)
             bM_starts[0] = 0  # Start for batch
-            bj_out_unique_freqs = torch.bincount(bj_out_unique, minlength=batch_size * nb_hidden)  # Get frequencies of each unique bj
+            bj_out_unique_freqs = torch.bincount(bj_out_unique,
+                                                 minlength=batch_size * nb_hidden)  # Get frequencies of each unique bj
 
             bj_out_unique_freqs = bj_out_unique_freqs.reshape(batch_size, -1).cumsum(1).roll(1)
             bj_out_unique_freqs[:, 0] = 0
             bj_out_unique_freqs = bj_out_unique_freqs.reshape(-1)  # Flatten
             ###############################################################
 
-
             # Call kernel to compute ds gradient
-            ain_bt_freqs = torch.bincount(bt_input_full, minlength=batch_size*nb_steps)  # Get frequencies of input batch
+            ain_bt_freqs = torch.bincount(bt_input_full,
+                                          minlength=batch_size * nb_steps)  # Get frequencies of input batch
             ain_bt_starts = torch.cumsum(ain_bt_freqs, 0).roll(1)
             ain_bt_starts[0] = 0
             grad_input = s3gd_s_backward_master(
-                                                 # Computing
-                                                 ds_out,  # Values to compute deltas (\red{dS[bjt]})
-                                                 ts_out,  # Times active output values to compute deltas
-                                                 bj_ends,  # Index fot ts_out with last time to read. Points to last time for each bj
-                                                 aout_bj_freqs,  # How many t we need to compute for a given b&j
-                                                 # Recording
-                                                 ts_in,  # Times to record
-                                                 b_ends,  # Index  for ts_in with last time to record each batch
-                                                 ain_b_freqs,  # How many t we need to record for a given batch (for tensor creation)
-                                                 # Other
-                                                 alphas,  # Powers of alpha
-                                                 weight,
-                                                 # Writing deltas
-                                                 bM_freqs,
-                                                 b_in_unique_freqs,
-                                                 bj_out_unique_freqs,
-                                                 bj_out_unique,
-                                                 # Computing gradient
-                                                 ain_bt_freqs,
-                                                 ain_bt_starts,
-                                                 ain_i,
-                                                 # Constants
-                                                 M, total_num_threads, batch_size, nb_steps, nb_inputs, nb_hidden
-                                                 )
+                # Computing
+                ds_out,  # Values to compute deltas (\red{dS[bjt]})
+                ts_out,  # Times active output values to compute deltas
+                bj_ends,  # Index fot ts_out with last time to read. Points to last time for each bj
+                aout_bj_freqs,  # How many t we need to compute for a given b&j
+                # Recording
+                ts_in,  # Times to record
+                b_ends,  # Index  for ts_in with last time to record each batch
+                ain_b_freqs,  # How many t we need to record for a given batch (for tensor creation)
+                # Other
+                alphas,  # Powers of alpha
+                weight,
+                # Writing deltas
+                bM_freqs,
+                b_in_unique_freqs,
+                bj_out_unique_freqs,
+                bj_out_unique,
+                # Computing gradient
+                ain_bt_freqs,
+                ain_bt_starts,
+                ain_i,
+                # Constants
+                M, total_num_threads, batch_size, nb_steps, nb_inputs, nb_hidden
+            )
         return grad_input, grad_weights, None, None
 
 
@@ -627,7 +631,6 @@ class SparseSNNLayer(torch.autograd.Function):
 
             # Compute first hidden layer activity
             for t in range(nb_steps - 1):
-
                 new_mem = beta * mem + h1[:, t, :] - rst
                 mem = new_mem
 
@@ -651,7 +654,8 @@ class SparseSNNLayer(torch.autograd.Function):
             spk_trace = torch.stack(spk_trace, dim=1)
 
             # ============================================ NEW STUFF ============================================= #
-            aout_idxs = torch.nonzero(torch.logical_and(mem_rec > b_th, mem_rec < 2. * th - b_th))  # Indices of mem_rec above threshold mask [b, t, j]
+            aout_idxs = torch.nonzero(torch.logical_and(mem_rec > b_th,
+                                                        mem_rec < 2. * th - b_th))  # Indices of mem_rec above threshold mask [b, t, j]
 
             # Membrane - th
             aout_mem = (mem_rec[aout_idxs[:, 0], aout_idxs[:, 1], aout_idxs[:, 2]] - th)
@@ -690,7 +694,7 @@ class SparseSNNLayer(torch.autograd.Function):
         aout_t = aout_t[grad_output_idxs]
         aout_i = aout_i[grad_output_idxs]
         aout_mem = aout_mem[grad_output_idxs]
-        if grad_output.numel()==0:
+        if grad_output.numel() == 0:
             grad_weights = torch.zeros_like(weight)
             grad_input = torch.zeros((batch_size, nb_steps, nb_inputs), device=grad_output.device)
             return grad_input, grad_weights, None, None
@@ -698,7 +702,7 @@ class SparseSNNLayer(torch.autograd.Function):
 
         # Weight gradient
         if ctx.needs_input_grad[1]:
-            grad_weights = s3gd_backward_cuda(spk_trace, aout_b, aout_t, aout_i, ds_out,  nb_inputs, nb_hidden)
+            grad_weights = s3gd_backward_cuda(spk_trace, aout_b, aout_t, aout_i, ds_out, nb_inputs, nb_hidden)
 
         # Input spikes gradient
         if ctx.needs_input_grad[0]:  # This is false for first layer
@@ -713,10 +717,10 @@ class SparseSNNLayer(torch.autograd.Function):
             j = (bjt - b * nb_hidden * nb_steps) // nb_steps
             ts_out = bjt - b * nb_hidden * nb_steps - j * nb_steps
             bj = b * nb_hidden + j
-            aout_bj_freqs = torch.bincount(bj, minlength=batch_size*nb_hidden)  # How many t for a given b and j
+            aout_bj_freqs = torch.bincount(bj, minlength=batch_size * nb_hidden)  # How many t for a given b and j
             idxs = torch.nonzero(aout_bj_freqs)  # Where to put the results
             ends = torch.cumsum(aout_bj_freqs[idxs], dim=0) - 1  # Indices
-            bj_ends = torch.full((batch_size*nb_hidden,), -1, device="cuda")
+            bj_ends = torch.full((batch_size * nb_hidden,), -1, device="cuda")
             bj_ends[idxs] = ends
 
             # Find indices to start from and frequencies (input)
@@ -750,45 +754,45 @@ class SparseSNNLayer(torch.autograd.Function):
             # Get starts for each bj
             bM_starts = torch.roll(bM_freqs, 1)
             bM_starts[0] = 0  # Start for batch
-            bj_out_unique_freqs = torch.bincount(bj_out_unique, minlength=batch_size * nb_hidden)  # Get frequencies of each unique bj
+            bj_out_unique_freqs = torch.bincount(bj_out_unique,
+                                                 minlength=batch_size * nb_hidden)  # Get frequencies of each unique bj
 
             bj_out_unique_freqs = bj_out_unique_freqs.reshape(batch_size, -1).cumsum(1).roll(1)
             bj_out_unique_freqs[:, 0] = 0
             bj_out_unique_freqs = bj_out_unique_freqs.reshape(-1)  # Flatten
             ###############################################################
 
-
             # Call kernel to compute ds gradient
-            ain_bt_freqs = torch.bincount(bt_input_full, minlength=batch_size*nb_steps)  # Get frequencies of input batch
+            ain_bt_freqs = torch.bincount(bt_input_full,
+                                          minlength=batch_size * nb_steps)  # Get frequencies of input batch
             ain_bt_starts = torch.cumsum(ain_bt_freqs, 0).roll(1)
             ain_bt_starts[0] = 0
             grad_input = s3gd_s_backward_master(
-                                                 # Computing
-                                                 ds_out,  # Values to compute deltas (\red{dS[bjt]})
-                                                 ts_out,  # Times active output values to compute deltas
-                                                 bj_ends,  # Index fot ts_out with last time to read. Points to last time for each bj
-                                                 aout_bj_freqs,  # How many t we need to compute for a given b&j
-                                                 # Recording
-                                                 ts_in,  # Times to record
-                                                 b_ends,  # Index  for ts_in with last time to record each batch
-                                                 ain_b_freqs,  # How many t we need to record for a given batch (for tensor creation)
-                                                 # Other
-                                                 alphas,  # Powers of alpha
-                                                 weight,
-                                                 # Writing deltas
-                                                 bM_freqs,
-                                                 b_in_unique_freqs,
-                                                 bj_out_unique_freqs,
-                                                 bj_out_unique,
-                                                 # Computing gradient
-                                                 ain_bt_freqs,
-                                                 ain_bt_starts,
-                                                 ain_i,
-                                                 # Constants
-                                                 M, total_num_threads, batch_size, nb_steps, nb_inputs, nb_hidden
-                                                 )
+                # Computing
+                ds_out,  # Values to compute deltas (\red{dS[bjt]})
+                ts_out,  # Times active output values to compute deltas
+                bj_ends,  # Index fot ts_out with last time to read. Points to last time for each bj
+                aout_bj_freqs,  # How many t we need to compute for a given b&j
+                # Recording
+                ts_in,  # Times to record
+                b_ends,  # Index  for ts_in with last time to record each batch
+                ain_b_freqs,  # How many t we need to record for a given batch (for tensor creation)
+                # Other
+                alphas,  # Powers of alpha
+                weight,
+                # Writing deltas
+                bM_freqs,
+                b_in_unique_freqs,
+                bj_out_unique_freqs,
+                bj_out_unique,
+                # Computing gradient
+                ain_bt_freqs,
+                ain_bt_starts,
+                ain_i,
+                # Constants
+                M, total_num_threads, batch_size, nb_steps, nb_inputs, nb_hidden
+            )
         return grad_input, grad_weights, None, None
-
 
 
 ############################################ TRAIN AND TEST ACC. ############################################
@@ -816,7 +820,7 @@ def compute_classification_accuracy(x_data, y_data, params, prs):
         if len(accs) % 25 == 0 and len(accs) > 0:
             print("Progress:{:d}/{:d}".format(len(accs), len(x_data) // prs['batch_size']))
         output, _ = run_snn(x_local.to_dense(), params, prs)
-        if prs['dataset_id']=='SHD':
+        if prs['dataset_id'] == 'SHD':
             m = torch.sum(output, dim=1)
         else:
             m, _ = torch.max(output, 1)  # max over time        
@@ -846,7 +850,7 @@ def time_snn(x_local, y_local, params, prs, warmup=None):
         spk_rec12_wu = spk_rec11_wu.detach().clone()
         spk_rec12_wu.requires_grad = True
         spk_rec12_wu.retain_grad()
-        spk_rec21_wu,_ = SNN_function(spk_rec12_wu, w2, aout_idxs11, prs)
+        spk_rec21_wu, _ = SNN_function(spk_rec12_wu, w2, aout_idxs11, prs)
         ### READOUT LAYER FORWARD ###
         # Copy spikes from second layer (detached from second layer)
         spk_rec22_wu = spk_rec21_wu.detach().clone()
@@ -854,7 +858,7 @@ def time_snn(x_local, y_local, params, prs, warmup=None):
         spk_rec22_wu.retain_grad()
         # Run readout and loss
         out_rec_wu = SNNReadout(spk_rec22_wu, w3, prs)
-        if prs['dataset_id']=='SHD':
+        if prs['dataset_id'] == 'SHD':
             m = torch.sum(out_rec_wu, dim=1)
         else:
             m, _ = torch.max(out_rec_wu, 1)
@@ -897,7 +901,7 @@ def time_snn(x_local, y_local, params, prs, warmup=None):
     fwd_time = time.time() - start
 
     peak_alloc = torch.cuda.max_memory_allocated()
-    fwd_alloc = peak_alloc-curr_alloc
+    fwd_alloc = peak_alloc - curr_alloc
     ### READOUT LAYER FORWARD ###
     # Copy spikes from first layer (dettached from first layer)
     spk_rec22 = spk_rec21.detach().clone()
@@ -907,7 +911,7 @@ def time_snn(x_local, y_local, params, prs, warmup=None):
     spk_rec22.retain_grad()
     # Run readout and loss
     out_rec = SNNReadout(spk_rec22, w3, prs)
-    if prs['dataset_id']=='SHD':
+    if prs['dataset_id'] == 'SHD':
         m = torch.sum(out_rec, dim=1)
     else:
         m, _ = torch.max(out_rec, 1)
@@ -927,9 +931,9 @@ def time_snn(x_local, y_local, params, prs, warmup=None):
     l_reg2 = loss_reg(spk_rec23, prs, hidden_level=1)
     torch.cuda.synchronize()
     fwd_time += time.time() - start
-    
+
     loss = loss_val + l_reg1 + l_reg2
-    
+
     ### READOUT LAYER BACKWARD ###
     # Backward the readout
     # loss backward modifies spk_rec22.grad, spk_rec12.grad and w3.grad
@@ -956,7 +960,7 @@ def time_snn(x_local, y_local, params, prs, warmup=None):
     bwd_time = time.time() - start
 
     peak_alloc = torch.cuda.max_memory_allocated()
-    bwd_alloc = peak_alloc-curr_alloc
+    bwd_alloc = peak_alloc - curr_alloc
 
     layer1_spikes_grad = spk_rec12.grad.detach().clone() + spk_rec13.grad.detach().clone()  # Regular loss + Regularization loss
     ### FIRST LAYER BACKWARD ###
@@ -979,7 +983,6 @@ def train_and_time(x_data, y_data, params, prs):
     elif prs['dataset_type'] == 'h5':
         sparse_data_generator = sparse_data_generator_h5
         nb_samples = len(x_data['units'])
-    
 
     loss_hist = []
     fwd_times = []
@@ -993,22 +996,25 @@ def train_and_time(x_data, y_data, params, prs):
     for e in range(nb_epochs):
         start = time.time()
         for x_local, y_local in sparse_data_generator(x_data, y_data, prs):
-            if len(loss_hist) % 25 == 0 and len(loss_hist)>0:
-                log_entry = "EPOCH {:d}/{:d}".format(e+1, nb_epochs) + \
-                            " Progress:{:d}/{:d}".format(len(loss_hist) % (nb_samples // batch_size), nb_samples // batch_size) + \
+            if len(loss_hist) % 25 == 0 and len(loss_hist) > 0:
+                log_entry = "EPOCH {:d}/{:d}".format(e + 1, nb_epochs) + \
+                            " Progress:{:d}/{:d}".format(len(loss_hist) % (nb_samples // batch_size),
+                                                         nb_samples // batch_size) + \
                             " LOSS: {:.4f}".format(loss_hist[-1])
                 print(log_entry)
                 with open(LOG, "a") as log:
-                    log.write(log_entry+"\n")
+                    log.write(log_entry + "\n")
 
-            if len(loss_hist) % prs['time_freq']==0:
-                warmup = prs['warmup']   # We do time
+            if len(loss_hist) % prs['time_freq'] == 0:
+                warmup = prs['warmup']  # We do time
             else:
                 warmup = 0
             # Run and time
             x_local_dense = x_local.to_dense()
             x_local_dense[x_local_dense[:] > 1.] = 1.
-            loss_val, fwd_time, bwd_time, fwd_alloc, bwd_alloc, spks1, spks2, act1, act2 = time_snn(x_local_dense, y_local, params, prs, warmup=warmup)
+            loss_val, fwd_time, bwd_time, fwd_alloc, bwd_alloc, spks1, spks2, act1, act2 = time_snn(x_local_dense,
+                                                                                                    y_local, params,
+                                                                                                    prs, warmup=warmup)
             # Update gradients
             optimizer.step()
             # Record
@@ -1021,14 +1027,16 @@ def train_and_time(x_data, y_data, params, prs):
             spike_counts2.append(spks2)
             active_counts1.append(act1)
             active_counts2.append(act2)
-        print("EPOCH FINISHED in {:.2f} s  FWD: {:.3f}s  BWD: {:.3f}s".format(time.time()-start, np.mean(np.array(fwd_times)), np.mean(np.array(bwd_times))))
+        print("EPOCH FINISHED in {:.2f} s  FWD: {:.3f}s  BWD: {:.3f}s".format(time.time() - start,
+                                                                              np.mean(np.array(fwd_times)),
+                                                                              np.mean(np.array(bwd_times))))
 
     counts = {
         'spike_counts1': spike_counts1,
         'spike_counts2': spike_counts2,
         'active_counts1': active_counts1,
         'active_counts2': active_counts2,
-              }
+    }
     return loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, counts
 
 
@@ -1043,19 +1051,20 @@ def run_and_time(prs=None, method='s3gd'):
         prs['SNN_function'] = SparseSNNLayer.apply
     elif method == 'localZO':  # Sparse LocalZO
         prs['SNN_function'] = SparseZOLayer.apply
-    else :
-        sg=getattr(SurrGradSpike, prs['surrogate'])
+    else:
+        sg = getattr(SurrGradSpike, prs['surrogate'])
         prs['spike_fn'] = sg.apply
         prs['SNN_function'] = SNNLayerOrig
-        #print(sg)
-    
+        # print(sg)
+
     fileh_train, fileh_test, x_train, x_test, y_train, y_test, prs, params = init(prs)
-    
-    global inv_cdf 
+
+    global inv_cdf
     if prs['surrogate'] == 'sigmoid':
         inv_cdf = torch.tensor(get_sigmoid_inv_cdf(), device=prs['device'], dtype=prs['dtype'])
     elif prs['surrogate'] == 'fsigmoid':
-        inv_cdf = torch.tensor(get_fsigmoid_inv_cdf(delta=prs['delta'], k=100), device=prs['device'], dtype=prs['dtype'])
+        inv_cdf = torch.tensor(get_fsigmoid_inv_cdf(delta=prs['delta'], k=100), device=prs['device'],
+                               dtype=prs['dtype'])
 
     loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, counts = train_and_time(x_train, y_train, params, prs)
     train_acc = compute_classification_accuracy(x_train, y_train, params, prs)
@@ -1068,48 +1077,55 @@ def run_and_time(prs=None, method='s3gd'):
 
 
 def sigmoid_pdf(x):
-    c=np.sqrt(1/0.4262)
-    return np.exp(- c*x)* (1-np.exp(- c*x)) / (0.4262*x*(1+np.exp(- c*x))**3)
+    c = np.sqrt(1 / 0.4262)
+    return np.exp(- c * x) * (1 - np.exp(- c * x)) / (0.4262 * x * (1 + np.exp(- c * x)) ** 3)
+
 
 def fsigmoid_pdf(x, delta, k):
-    return ((k*delta)**2)*np.abs(x)/(1+ k*delta*np.abs(x))**3 
+    return ((k * delta) ** 2) * np.abs(x) / (1 + k * delta * np.abs(x)) ** 3
 
-def get_sigmoid_inv_cdf(support=10, step_supp = 0.001, step_unif=0.001):
-    x = np.arange(start=-support, stop= support , step=step_supp)
+
+def get_sigmoid_inv_cdf(support=10, step_supp=0.001, step_unif=0.001):
+    x = np.arange(start=-support, stop=support, step=step_supp)
     pdf = sigmoid_pdf(x)
-    cdf = np.cumsum(pdf*step_supp)
+    cdf = np.cumsum(pdf * step_supp)
     cdf /= cdf[-1]
-    u = np.arange(step_unif,1, step= step_unif)
-    inv_cdf=np.zeros_like(u)
-    j=0
-    for i, c in enumerate(u): 
-        temp=0; l=0
-        while( cdf[j] < c ):
+    u = np.arange(step_unif, 1, step=step_unif)
+    inv_cdf = np.zeros_like(u)
+    j = 0
+    for i, c in enumerate(u):
+        temp = 0;
+        l = 0
+        while (cdf[j] < c):
             temp += x[j]
-            j +=1; l+=1
-        if l>0:    
-            inv_cdf[i] = temp/l
-        else:    
-            inv_cdf[i] = inv_cdf[i-1]
-    return inv_cdf    
+            j += 1;
+            l += 1
+        if l > 0:
+            inv_cdf[i] = temp / l
+        else:
+            inv_cdf[i] = inv_cdf[i - 1]
+    return inv_cdf
 
-def get_fsigmoid_inv_cdf(delta, k, support=10, step_supp = 0.001, step_unif=0.001):
-    x = np.arange(start=-support, stop= support , step=step_supp)
+
+def get_fsigmoid_inv_cdf(delta, k, support=10, step_supp=0.001, step_unif=0.001):
+    x = np.arange(start=-support, stop=support, step=step_supp)
     pdf = fsigmoid_pdf(x, delta, k)
-    cdf = np.cumsum(pdf*step_supp)
+    cdf = np.cumsum(pdf * step_supp)
     cdf /= cdf[-1]
-    u = np.arange(step_unif,1, step= step_unif)
-    inv_cdf=np.zeros_like(u)
-    j=0
-    for i, c in enumerate(u): 
-        temp=0; l=0
-        while( cdf[j] < c ):
+    u = np.arange(step_unif, 1, step=step_unif)
+    inv_cdf = np.zeros_like(u)
+    j = 0
+    for i, c in enumerate(u):
+        temp = 0;
+        l = 0
+        while (cdf[j] < c):
             temp += x[j]
-            j +=1; l+=1
-        if l>0:    
-            inv_cdf[i] = temp/l
-        else:    
-            inv_cdf[i] = inv_cdf[i-1]
+            j += 1;
+            l += 1
+        if l > 0:
+            inv_cdf[i] = temp / l
+        else:
+            inv_cdf[i] = inv_cdf[i - 1]
     return inv_cdf
 
 
@@ -1148,7 +1164,7 @@ def run(dataset, hidden_list, nb_trials, prs=None):
     bwdm_orig = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
     train_acc_orig = np.zeros((nb_trials, len(hidden_list)))
     test_acc_orig = np.zeros((nb_trials, len(hidden_list)))
-    
+
     loss_s3gd = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
     fwd_s3gd = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
     bwd_s3gd = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
@@ -1156,7 +1172,7 @@ def run(dataset, hidden_list, nb_trials, prs=None):
     bwdm_s3gd = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
     train_acc_s3gd = np.zeros((nb_trials, len(hidden_list)))
     test_acc_s3gd = np.zeros((nb_trials, len(hidden_list)))
-    
+
     loss_localZO = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
     fwd_localZO = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
     bwd_localZO = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
@@ -1173,8 +1189,6 @@ def run(dataset, hidden_list, nb_trials, prs=None):
     active_counts1_zo = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
     active_counts2_zo = [[[] for _ in range(len(hidden_list))] for _ in range(nb_trials)]
 
-    
-
     for trial in range(nb_trials):
         prs['seed'] = SEED + trial
         for n, nb_hidden in enumerate(hidden_list):
@@ -1185,8 +1199,9 @@ def run(dataset, hidden_list, nb_trials, prs=None):
             prs['warmup'] = 5
 
             # Sparse LocalZO
-            loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, train_acc, test_acc, prs_localZO, counts_localZO, params_localZO = run_and_time(prs=prs,
-                                                                                                                                   method='localZO')
+            loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, train_acc, test_acc, prs_localZO, counts_localZO, params_localZO = run_and_time(
+                prs=prs,
+                method='localZO')
             loss_localZO[trial][n] = loss_hist
             fwd_localZO[trial][n] = fwd_times
             bwd_localZO[trial][n] = bwd_times
@@ -1194,18 +1209,18 @@ def run(dataset, hidden_list, nb_trials, prs=None):
             bwdm_localZO[trial][n] = bwd_mems
             train_acc_localZO[trial, n] = train_acc
             test_acc_localZO[trial, n] = test_acc
-            #spike_counts1_zo[trial][n] = counts_localZO['spike_counts1']
-            #spike_counts2_zo[trial][n] = counts_localZO['spike_counts2']
+            # spike_counts1_zo[trial][n] = counts_localZO['spike_counts1']
+            # spike_counts2_zo[trial][n] = counts_localZO['spike_counts2']
             active_counts1_zo[trial][n] = counts_localZO['active_counts1']
             active_counts2_zo[trial][n] = counts_localZO['active_counts2']
 
-            params_localZO = {'w'+str(l): v for l, v in enumerate(params_localZO)}
+            params_localZO = {'w' + str(l): v for l, v in enumerate(params_localZO)}
             torch.save(params_localZO, os.path.join(PATH_RESULTS, 'params_localZO.p'))
 
-
             # Sparse spiking backprop
-            loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, train_acc, test_acc, prs_s3gd, counts_s3gd, params_s3gd = run_and_time(prs=prs,
-                                                                                                                                   method='s3gd')
+            loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, train_acc, test_acc, prs_s3gd, counts_s3gd, params_s3gd = run_and_time(
+                prs=prs,
+                method='s3gd')
             loss_s3gd[trial][n] = loss_hist
             fwd_s3gd[trial][n] = fwd_times
             bwd_s3gd[trial][n] = bwd_times
@@ -1217,14 +1232,13 @@ def run(dataset, hidden_list, nb_trials, prs=None):
             spike_counts2[trial][n] = counts_s3gd['spike_counts2']
             active_counts1[trial][n] = counts_s3gd['active_counts1']
             active_counts2[trial][n] = counts_s3gd['active_counts2']
-            params_s3gd = {'w'+str(l): v for l, v in enumerate(params_s3gd)}
+            params_s3gd = {'w' + str(l): v for l, v in enumerate(params_s3gd)}
             torch.save(params_s3gd, os.path.join(PATH_RESULTS, 'params_s3gd.p'))
 
-
-
             # Pytorch original
-            loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, train_acc, test_acc, prs_orig, counts_orig, params_orig = run_and_time(prs=prs,
-                                                                                                                                   method='original')
+            loss_hist, fwd_times, bwd_times, fwd_mems, bwd_mems, train_acc, test_acc, prs_orig, counts_orig, params_orig = run_and_time(
+                prs=prs,
+                method='original')
             loss_orig[trial][n] = loss_hist
             fwd_orig[trial][n] = fwd_times
             bwd_orig[trial][n] = bwd_times
@@ -1232,28 +1246,31 @@ def run(dataset, hidden_list, nb_trials, prs=None):
             bwdm_orig[trial][n] = bwd_mems
             train_acc_orig[trial, n] = train_acc
             test_acc_orig[trial, n] = test_acc
-            params_orig = {'w'+str(l): v for l, v in enumerate(params_orig)}
+            params_orig = {'w' + str(l): v for l, v in enumerate(params_orig)}
             torch.save(params_orig, os.path.join(PATH_RESULTS, 'params_orig.p'))
 
             # Checkpoint data
-            prs_orig_save = {k: v for k, v in prs_orig.items() if k not in ['SNN_function', 'spike_fn', 'dtype']} if prs_orig is not None else None
-            prs_s3gd_save = {k: v for k, v in prs_s3gd.items() if k not in ['SNN_function', 'spike_fn', 'dtype']} if prs_s3gd is not None else None
-            prs_localZO_save = {k: v for k, v in prs_localZO.items() if k not in ['SNN_function', 'spike_fn', 'dtype']} if prs_localZO is not None else None
+            prs_orig_save = {k: v for k, v in prs_orig.items() if
+                             k not in ['SNN_function', 'spike_fn', 'dtype']} if prs_orig is not None else None
+            prs_s3gd_save = {k: v for k, v in prs_s3gd.items() if
+                             k not in ['SNN_function', 'spike_fn', 'dtype']} if prs_s3gd is not None else None
+            prs_localZO_save = {k: v for k, v in prs_localZO.items() if
+                                k not in ['SNN_function', 'spike_fn', 'dtype']} if prs_localZO is not None else None
             CONFIG_save = {k: v for k, v in CONFIG.items() if k not in ['dtype']}
             d = {
                 'prs_orig': prs_orig_save,
                 'prs_s3gd': prs_s3gd_save,
                 'prs_localZO': prs_localZO_save,
                 'CONFIG': CONFIG_save,
-                
+
                 'loss_orig': loss_orig,
-                'fwd_orig': fwd_orig,                
+                'fwd_orig': fwd_orig,
                 'bwd_orig': bwd_orig,
                 'fwdm_orig': fwdm_orig,
                 'bwdm_orig': bwdm_orig,
-                'train_acc_orig': train_acc_orig,             
+                'train_acc_orig': train_acc_orig,
                 'test_acc_orig': test_acc_orig,
-                
+
                 'loss_s3gd': loss_s3gd,
                 'fwd_s3gd': fwd_s3gd,
                 'bwd_s3gd': bwd_s3gd,
@@ -1273,41 +1290,41 @@ def run(dataset, hidden_list, nb_trials, prs=None):
                 'counts_s3gd': counts_s3gd,
                 'counts_localZO': counts_localZO,
                 'counts_orig': counts_orig,
-                 }
+            }
             pickle.dump(d, open(os.path.join(PATH_RESULTS, 'data.p'), 'wb'))
             with open(os.path.join(PATH_RESULTS, 'prs.json'), 'w') as fp:
                 json.dump([prs_orig_save, prs_s3gd_save, prs_localZO_save, CONFIG_save], fp, sort_keys=True, indent=4)
             print('Checkpoint saved')
 
             log_entry = "################################################################## \n" + \
-                        "TRIAL {:d}/{:d}".format(trial+1, nb_trials) + \
+                        "TRIAL {:d}/{:d}".format(trial + 1, nb_trials) + \
                         " NB_HIDDEN: {:d} of {:d}".format(nb_hidden, len(hidden_list)) + \
-                        " in {:.2f} s".format(time.time()-start) + \
+                        " in {:.2f} s".format(time.time() - start) + \
                         "\n################################################################## \n"
             print(log_entry)
             with open(LOG, "a") as log:
-                log.write(log_entry+"\n")
+                log.write(log_entry + "\n")
 
     # Process data
     loss_orig = np.array(loss_orig)
     fwd_orig = np.array(fwd_orig)
     bwd_orig = np.array(bwd_orig)
-    fwdm_orig = np.array(fwdm_orig) / (1024**2)  # MiB
-    bwdm_orig = np.array(bwdm_orig) / (1024**2)
+    fwdm_orig = np.array(fwdm_orig) / (1024 ** 2)  # MiB
+    bwdm_orig = np.array(bwdm_orig) / (1024 ** 2)
 
     loss_s3gd = np.array(loss_s3gd)
     fwd_s3gd = np.array(fwd_s3gd)
     bwd_s3gd = np.array(bwd_s3gd)
-    fwdm_s3gd = np.array(fwdm_s3gd) / (1024**2)
-    bwdm_s3gd = np.array(bwdm_s3gd) / (1024**2)
+    fwdm_s3gd = np.array(fwdm_s3gd) / (1024 ** 2)
+    bwdm_s3gd = np.array(bwdm_s3gd) / (1024 ** 2)
     active_counts1 = np.array(active_counts1)
     active_counts2 = np.array(active_counts2)
-    
+
     loss_localZO = np.array(loss_localZO)
     fwd_localZO = np.array(fwd_localZO)
     bwd_localZO = np.array(bwd_localZO)
-    fwdm_localZO = np.array(fwdm_localZO) / (1024**2)
-    bwdm_localZO = np.array(bwdm_localZO) / (1024**2)
+    fwdm_localZO = np.array(fwdm_localZO) / (1024 ** 2)
+    bwdm_localZO = np.array(bwdm_localZO) / (1024 ** 2)
     active_counts1_zo = np.array(active_counts1_zo)
     active_counts2_zo = np.array(active_counts2_zo)
 
@@ -1317,14 +1334,13 @@ def run(dataset, hidden_list, nb_trials, prs=None):
     train_acc_s3gd_error = stats.sem(train_acc_s3gd)[0]
     train_acc_localZO_mean = np.mean(train_acc_localZO, axis=0)
     train_acc_localZO_error = stats.sem(train_acc_localZO)[0]
-    
+
     test_acc_orig_mean = np.mean(test_acc_orig, axis=0)
     test_acc_orig_error = stats.sem(test_acc_orig)[0]
     test_acc_s3gd_mean = np.mean(test_acc_s3gd, axis=0)
     test_acc_s3gd_error = stats.sem(test_acc_s3gd)[0]
     test_acc_localZO_mean = np.mean(test_acc_localZO, axis=0)
     test_acc_localZO_error = stats.sem(test_acc_localZO)[0]
-
 
     # Plot
     dataset_name = prs.get('dataset_name', CONFIG['dataset_name'])
@@ -1364,25 +1380,26 @@ def run(dataset, hidden_list, nb_trials, prs=None):
         plt.savefig(os.path.join(PATH_RESULTS, 'bwd_h{:d}.pdf'.format(nb_hidden)))
 
         plt.figure()
-        plot_error(bwd_orig[:, n, :] / (bwd_s3gd[:, n, :] + 1e-30), color='#7570b3',  label='s3gd Backward')
-        plot_error(bwd_orig[:, n, :] / (bwd_localZO[:, n, :] + 1e-30),color='#d95f02', label='localZO Backward')
+        plot_error(bwd_orig[:, n, :] / (bwd_s3gd[:, n, :] + 1e-30), color='#7570b3', label='s3gd Backward')
+        plot_error(bwd_orig[:, n, :] / (bwd_localZO[:, n, :] + 1e-30), color='#d95f02', label='localZO Backward')
         plt.xlabel("Number of gradient updates")
         plt.ylabel("Speedup")
         plt.title("{:s} Speedup time backward  2-FClayer [{:d}, {:d}]".format(dataset_name, nb_hidden, nb_hidden))
-        #plt.ylim([-0.5, 100])
+        # plt.ylim([-0.5, 100])
         plt.legend()
         plt.savefig(os.path.join(PATH_RESULTS, 'speedup_backward_h{:d}.pdf'.format(nb_hidden)))
 
         plt.figure()
-        plot_error((fwd_orig[:, n, :]+bwd_orig[:, n, :]) / (fwd_s3gd[:, n, :] + bwd_s3gd[:, n, :] + 1e-30), color='#7570b3', label='s3gd Overall')
-        plot_error((fwd_orig[:, n, :]+bwd_orig[:, n, :]) / (fwd_localZO[:, n, :] + bwd_localZO[:, n, :] + 1e-30),color='#d95f02', label='localZO Overall')
+        plot_error((fwd_orig[:, n, :] + bwd_orig[:, n, :]) / (fwd_s3gd[:, n, :] + bwd_s3gd[:, n, :] + 1e-30),
+                   color='#7570b3', label='s3gd Overall')
+        plot_error((fwd_orig[:, n, :] + bwd_orig[:, n, :]) / (fwd_localZO[:, n, :] + bwd_localZO[:, n, :] + 1e-30),
+                   color='#d95f02', label='localZO Overall')
         plt.xlabel("Number of gradient updates")
         plt.ylabel("Speedup")
         plt.title("{:s} Speedup time overall 2-FClayer [{:d}, {:d}]".format(dataset_name, nb_hidden, nb_hidden))
-        #plt.ylim([-0.5, 100])
+        # plt.ylim([-0.5, 100])
         plt.legend()
         plt.savefig(os.path.join(PATH_RESULTS, 'speedup_overall_h{:d}.pdf'.format(nb_hidden)))
-
 
         plt.figure()
         plot_error(fwdm_orig[:, n, :], label='Original')
@@ -1419,14 +1436,18 @@ def run(dataset, hidden_list, nb_trials, prs=None):
         #        plt.savefig(os.path.join(PATH_RESULTS, 'mem_improvement_h{:d}.pdf'.format(nb_hidden)))
 
         # Active neuron counts
-        total_vars_first_hidden = prs['batch_size'] * prs['nb_steps'] *prs['nb_hidden']
-        total_vars_second_hidden = prs['batch_size'] * prs['nb_steps'] *prs['nb_hidden2']
+        total_vars_first_hidden = prs['batch_size'] * prs['nb_steps'] * prs['nb_hidden']
+        total_vars_second_hidden = prs['batch_size'] * prs['nb_steps'] * prs['nb_hidden2']
         plt.figure()
-        plot_error(100*active_counts1[:, n, :]/total_vars_first_hidden, color='#7570b3', ls='--', label='First Hidden Layer, s3gd')
-        plot_error(100*active_counts2[:, n, :]/total_vars_second_hidden, color='#7570b3', label='Second Hidden Layer, s3gd ')
-        plot_error(100*active_counts1_zo[:, n, :]/total_vars_first_hidden, color='#d95f02', ls='--', label='First Hidden Layer, zo')
-        plot_error(100*active_counts2_zo[:, n, :]/total_vars_second_hidden, color='#d95f02', label='Second Hidden Layer, zo')
-        
+        plot_error(100 * active_counts1[:, n, :] / total_vars_first_hidden, color='#7570b3', ls='--',
+                   label='First Hidden Layer, s3gd')
+        plot_error(100 * active_counts2[:, n, :] / total_vars_second_hidden, color='#7570b3',
+                   label='Second Hidden Layer, s3gd ')
+        plot_error(100 * active_counts1_zo[:, n, :] / total_vars_first_hidden, color='#d95f02', ls='--',
+                   label='First Hidden Layer, zo')
+        plot_error(100 * active_counts2_zo[:, n, :] / total_vars_second_hidden, color='#d95f02',
+                   label='Second Hidden Layer, zo')
+
         plt.xlabel("Number of gradient updates")
         plt.ylabel(' Percentage of active neurons (%) ')
         plt.title("{:s} Total active neurons 2-FClayer [{:d}, {:d}]".format(dataset_name, nb_hidden, nb_hidden))
@@ -1442,7 +1463,7 @@ def run(dataset, hidden_list, nb_trials, prs=None):
     fig, ax = plt.subplots()
     rects1 = ax.bar(x, train_acc_orig_mean, width, yerr=train_acc_orig_error, label='Original')
     rects3 = ax.bar(x + width, train_acc_s3gd_mean, width, yerr=train_acc_s3gd_error, label='Sparse')
-    rects4 = ax.bar(x + 2*width, train_acc_localZO_mean, width, yerr=train_acc_localZO_error, label='LocalZO')
+    rects4 = ax.bar(x + 2 * width, train_acc_localZO_mean, width, yerr=train_acc_localZO_error, label='LocalZO')
 
     ax.set_ylabel('Accuracy (%)')
     ax.set_xlabel('Number Hidden')
@@ -1454,9 +1475,9 @@ def run(dataset, hidden_list, nb_trials, prs=None):
 
     # Testing
     fig, ax = plt.subplots()
-    rects1 = ax.bar(x , test_acc_orig_mean, width, yerr=test_acc_orig_error, label='Original')
+    rects1 = ax.bar(x, test_acc_orig_mean, width, yerr=test_acc_orig_error, label='Original')
     rects3 = ax.bar(x + width, test_acc_s3gd_mean, width, yerr=test_acc_s3gd_error, label='Sparse')
-    rects4 = ax.bar(x + 2*width, test_acc_localZO_mean, width, yerr=test_acc_localZO_error, label='LocalZO')
+    rects4 = ax.bar(x + 2 * width, test_acc_localZO_mean, width, yerr=test_acc_localZO_error, label='LocalZO')
     ax.set_ylabel('Accuracy (%)')
     ax.set_xlabel('Number Hidden')
     ax.set_title('Test Accuracy')
@@ -1464,6 +1485,5 @@ def run(dataset, hidden_list, nb_trials, prs=None):
     ax.set_xticklabels(hidden_list)  # This would be the dataset
     ax.legend()
     plt.savefig(os.path.join(PATH_RESULTS, 'test_acc.pdf'))
-
 
     plt.show()

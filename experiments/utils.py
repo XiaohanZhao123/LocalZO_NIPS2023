@@ -1,13 +1,13 @@
-from snntorch import utils
-import torch
-import snntorch
-import time
-import snntorch.functional as SF
-from dataset.utils import repeat
-from torch import nn
-from models.simplenet import SimpleNetSNNtorch
 import os
-import sys
+import time
+
+import snntorch.functional as SF
+import torch
+from snntorch import utils
+from torch import nn
+
+from LocalZO.conv_models.neurons import LeakyPlain, LeakyZOPlainOnce
+from dataset.utils import repeat
 
 
 def forward_snntorch(net, data):
@@ -91,7 +91,6 @@ def train_and_profile_spconv(net,
                              constant_encoding=False,
                              num_steps=6,
                              save_dir='./spconv_model.pth'):
-    
     if save_dir is not None and os.path.exists(save_dir):
         net.load_state_dict(torch.load(save_dir))
     if constant_encoding is True:
@@ -128,3 +127,26 @@ def train_and_profile_spconv(net,
     mean_time = sum(time_list) / len(time_list)
     print(f'spconv mean_time: {mean_time}')
     return mean_time
+
+
+def replace_leaky_zo_plain_once(model: torch.nn.Module):
+    """
+    Replace LeakyZOPlainOnce with LeakyPlain in the given model.
+
+    Args:
+        model: The model to be modified.
+
+    Returns: None, in-place changes.
+    """
+    for name, module in model.named_children():
+        if isinstance(module, LeakyZOPlainOnce):
+            # Replace LeakyZOPlainOnce with LeakyPlain
+            u_th = module.u_th
+            beta = module.beta
+            batch_size = module.batch_size
+            plain_module = LeakyPlain(u_th, beta, batch_size)
+            setattr(model, name, plain_module)
+        else:
+            # Recursively replace LeakyZOPlainOnce with LeakyPlain in the child module
+            replace_leaky_zo_plain_once(module)
+

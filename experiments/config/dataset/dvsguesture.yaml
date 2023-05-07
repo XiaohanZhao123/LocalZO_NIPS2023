@@ -1,6 +1,6 @@
 name: dvs_guesture
 n_class: 11
-batch_size: 12
+batch_size: 8
 constant_encoding: False
 
 get_dataset:

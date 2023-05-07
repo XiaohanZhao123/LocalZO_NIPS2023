@@ -1,6 +1,6 @@
 import tonic
-from tonic import transforms
 import torch
+from tonic import transforms
 from torch.utils.data import DataLoader
 
 
@@ -17,7 +17,3 @@ def get_dataset(root, batch_size):
     nminist_cached = tonic.DiskCachedDataset(nminist_frame, cache_path='./cache/nminist', transform=transform)
     train_loader = DataLoader(dataset=nminist_cached, batch_size=batch_size, num_workers=4, pin_memory=True)
     return train_loader
-
-
-
-

@@ -1,15 +1,11 @@
 import torch
-from torch import nn
-from torch.autograd import Function
 from spconv import pytorch as spconv
-from typing import Tuple, Optional, Any
-from .utils import generate_sparse_input
+from torch import nn
+
 from .functional import \
     (PlainLIFFunction,
-    PlainLIFLocalZOMultiSample,
-    PlainLIFLocalZOOnce,
-    PlainLIFFunctionProfile,
-    PlainLIFLocalZOOnceProfile)
+     PlainLIFLocalZOMultiSample,
+     PlainLIFLocalZOOnce,)
 from .samplers import BaseSampler, BaseOnceSampler, NormalOnceSampler
 
 __all__ = ['LeakyPlain', 'LeakeyZOPlain', 'LeakyZOPlainOnce']
@@ -32,7 +28,6 @@ class LeakyPlain(nn.Module):
         self.batch_size = batch_size
         self.beta = beta
         self.u_th = u_th
-        self.forward_fn = PlainLIFFunctionProfile.apply if profile else PlainLIFFunction.apply
 
     def forward(self, inputs: spconv.SparseConvTensor) -> spconv.SparseConvTensor:
         if isinstance(inputs, torch.Tensor):
@@ -69,7 +64,8 @@ class LeakeyZOPlain(nn.Module):
 
     def forward(self, inputs):
         if isinstance(inputs, torch.Tensor):
-            random_tangents = self.random_sampler.generate_random_tangents(inputs.shape, self.batch_size, self.sample_num,
+            random_tangents = self.random_sampler.generate_random_tangents(inputs.shape, self.batch_size,
+                                                                           self.sample_num,
                                                                            device=inputs.device)
             outputs = PlainLIFLocalZOMultiSample.apply(inputs, self.batch_size, self.u_th,
                                                        self.beta, random_tangents, self.delta)
@@ -87,7 +83,8 @@ class LeakeyZOPlain(nn.Module):
 class LeakyZOPlainOnce(nn.Module):
     """only sample once to accelerate the training process"""
 
-    def __init__(self, u_th, beta, batch_size, random_sampler: NormalOnceSampler = NormalOnceSampler(), delta=0.01, profile=False):
+    def __init__(self, u_th, beta, batch_size, random_sampler: NormalOnceSampler = NormalOnceSampler(), delta=0.01,
+                 profile=False):
         """
         Leaky integrate-and-fire neuron model with plain implementation using ZO to approximate gradient
 
@@ -110,7 +107,8 @@ class LeakyZOPlainOnce(nn.Module):
         if isinstance(inputs, torch.Tensor):
             random_tangents = self.random_sampler.generate_random_tangents(inputs.shape, self.batch_size,
                                                                            device=inputs.device)
-            outputs = PlainLIFLocalZOOnce.apply(inputs, self.batch_size, self.u_th, self.beta, random_tangents, self.delta)
+            outputs = PlainLIFLocalZOOnce.apply(inputs, self.batch_size, self.u_th, self.beta, random_tangents,
+                                                self.delta)
             return outputs
 
         # else

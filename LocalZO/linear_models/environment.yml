@@ -60,6 +60,6 @@ dependencies:
   - torchvision=0.8.2=py38_cu110
 
   - pip:
-    - matplotlib
-    - scipy
-    - tables
+      - matplotlib
+      - scipy
+      - tables

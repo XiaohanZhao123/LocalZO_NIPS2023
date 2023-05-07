@@ -8,14 +8,15 @@ parser.add_argument('--nb_hidden', type=int, nargs='+', default=[200], help='Num
 parser.add_argument('--prefix', type=str, default='RUN', help='Name of the experiment')
 parser.add_argument('--nb_epochs', type=int, default=20, help='Number of epochs')
 parser.add_argument('--time_freq', type=int, default=20, help='How often we time')
-parser.add_argument('--surrogate', type=str, default='normal', help='Surrogate options: normal, laplace, uniform, sigmoid, fsigmoid')
+parser.add_argument('--surrogate', type=str, default='normal',
+                    help='Surrogate options: normal, laplace, uniform, sigmoid, fsigmoid')
 
 OPTIONS = parser.parse_args()
 
 if __name__ == "__main__":
-
     # Run train and time
     from train_and_time import run
+
     dataset = OPTIONS.dataset
     hidden_list = OPTIONS.nb_hidden
     nb_trials = OPTIONS.nb_trials

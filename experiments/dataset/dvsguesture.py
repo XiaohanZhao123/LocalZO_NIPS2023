@@ -1,4 +1,5 @@
 import os
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 import tonic
@@ -46,6 +47,3 @@ if __name__ == '__main__':
             logits = spconv_model(inputs)
             acc = accuracy_rate(logits, target)
             print('spconv acc', acc)
-
-
-

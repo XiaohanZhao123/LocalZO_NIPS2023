@@ -1,13 +1,11 @@
 import snntorch
 import torch
-import functools
 import torch.nn as nn
-import torch.nn.functional as F
-from spconv import pytorch as spconv
-from LocalZO.conv_models.neurons import LeakyPlain, LeakeyZOPlain, LeakyZOPlainOnce
 from snntorch import surrogate
+from spconv import pytorch as spconv
+
+from LocalZO.conv_models.neurons import LeakyPlain, LeakyZOPlainOnce
 from LocalZO.conv_models.samplers import NormalOnceSampler
-from snntorch import utils
 
 spike_grad = surrogate.sigmoid()
 
@@ -55,7 +53,7 @@ class VGGSNNTorch(nn.Module):
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=512*3*3, out_features=self.num_class),
+            nn.Linear(in_features=512 * 3 * 3, out_features=self.num_class),
             snntorch.Leaky(beta=beta, threshold=u_th, spike_grad=spike_grad, init_hidden=True, output=True),
         )
 
@@ -105,7 +103,7 @@ class VGGSpconv(nn.Module):
         self.classifier = nn.Sequential(
             spconv.ToDense(),
             nn.Flatten(),
-            nn.Linear(in_features=512*3*3, out_features=self.num_class),
+            nn.Linear(in_features=512 * 3 * 3, out_features=self.num_class),
             LeakyPlain(u_th=u_th, beta=beta, batch_size=batch_size),
         )
 

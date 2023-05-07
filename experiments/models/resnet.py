@@ -1,14 +1,11 @@
 import functools
 
 import snntorch
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from spconv import pytorch as spconv
-from LocalZO.conv_models.neurons import LeakyPlain, LeakyZOPlainOnce
 from snntorch import surrogate
-from spconv.pytorch.functional import sparse_add
-from snntorch import utils
+from spconv import pytorch as spconv
+
+from LocalZO.conv_models.neurons import LeakyPlain, LeakyZOPlainOnce
 
 spike_grad = surrogate.atan()
 

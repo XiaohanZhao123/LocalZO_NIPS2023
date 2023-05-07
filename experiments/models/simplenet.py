@@ -1,9 +1,10 @@
-import torch
-import spconv.pytorch as spconv
-from torch import nn
-from LocalZO.conv_models.neurons import LeakyPlain, LeakyZOPlainOnce
 import snntorch
+import spconv.pytorch as spconv
+import torch
 from snntorch import surrogate
+from torch import nn
+
+from LocalZO.conv_models.neurons import LeakyPlain, LeakyZOPlainOnce
 
 surrogate_grad = surrogate.sigmoid()
 

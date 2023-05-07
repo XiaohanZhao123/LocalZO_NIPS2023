@@ -1,6 +1,6 @@
 defaults:
-  - dataset: dvscifar10
-  - model: vgg
+  - dataset: cifar10
+  - model: resnet18
   - optimizer: default
 
 

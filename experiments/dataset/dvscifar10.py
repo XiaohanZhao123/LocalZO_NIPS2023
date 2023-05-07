@@ -1,8 +1,7 @@
 import tonic
-from tonic import transforms
 import torch
+from tonic import transforms
 from torch.utils.data import DataLoader
-from snntorch.utils import data_subset
 from torchvision.transforms import Resize
 
 
@@ -30,5 +29,3 @@ def get_dataset(root, batch_size, time_window):
 if __name__ == '__main__':
     train_loader = get_dataset('/home/zxh/data', 64, time_window=6000)
     print(next(iter(train_loader))[0].shape)
-
-
