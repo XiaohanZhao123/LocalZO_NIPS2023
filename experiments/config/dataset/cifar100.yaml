@@ -2,7 +2,7 @@ name: cifar100
 n_class: 100
 batch_size: 32
 constant_encoding: True
-num_step: 50
+num_step: 25
 
 get_dataset:
   _target_: experiments.dataset.cifar100.get_dataset

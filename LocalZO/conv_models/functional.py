@@ -53,9 +53,6 @@ class PlainLIFFunction(Function):
         batch_size, u_th, beta = ctx.constant
         grad_outputs = grad_outputs.view(-1, batch_size, *grad_outputs.size()[1:])  # make it time first
         grad_outputs = torch.flip(grad_outputs, dims=[0])
-        print(f'layer_idx:{layer_idx},sparsity_of_input_grad:{compute_sparsity(grad_outputs)}')
-        with open(lif_save_dirctory, 'a+') as f:
-            f.write(f'layer_idx:{layer_idx},sparsity_of_input_grad:{compute_sparsity(grad_outputs)}\n')
         mem_rec = ctx.saved_tensors[0]
         # compute element-wise gradient
         grad_prev_memberance_potential = 0  # the gradient of the previous memberance potential
@@ -70,9 +67,6 @@ class PlainLIFFunction(Function):
 
         # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
-        print(f'layer_idx:{layer_idx},sparsity_of_output_grad:{compute_sparsity(grad_inputs)}')
-        with open(lif_save_dirctory, 'a+') as f:
-            f.write(f'layer_idx:{layer_idx},sparsity_of_output_grad:{compute_sparsity(grad_inputs)}\n')
         return grad_inputs, None, None, None
 
 
@@ -208,9 +202,6 @@ class PlainLIFLocalZOOnce(Function):
         batch_size, u_th, beta = ctx.constant
         grad_heavisides = ctx.saved_tensors[0]  # gradients for heaviside function
         grad_outputs = grad_outputs.view(-1, batch_size, *grad_outputs.size()[1:])  # make it time first
-        print(f'layer_idx:{layer_idx},sparsity_of_input_grad:{compute_sparsity(grad_outputs)}')
-        with open(lif_zo_save_dirctory, 'a+') as f:
-            f.write(f'layer_idx:{layer_idx},sparsity_of_input_grad:{compute_sparsity(grad_outputs)}\n')
         grad_outputs = torch.flip(grad_outputs, dims=[0])
         grad_prev_memberance_potential = 0  # the gradient of the previous memberance potential
         grad_inputs = []
@@ -219,12 +210,8 @@ class PlainLIFLocalZOOnce(Function):
             grad_current_memberance_potential = grad_prev_memberance_potential * beta + grad_output * grad_heaviside
             grad_prev_memberance_potential = grad_current_memberance_potential
             grad_inputs.append(grad_current_memberance_potential)
-
             # flip the grad and return
         grad_inputs = torch.cat(grad_inputs[::-1], dim=0)
-        print(f'layer_idx:{layer_idx},sparsity_of_output_grad:{compute_sparsity(grad_inputs)}')
-        with open(lif_zo_save_dirctory, 'a+') as f:
-            f.write(f'layer_idx:{layer_idx},sparsity_of_output_grad:{compute_sparsity(grad_inputs)}\n')
         return grad_inputs, None, None, None, None, None
 
 

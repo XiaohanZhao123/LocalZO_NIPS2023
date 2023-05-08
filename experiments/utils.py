@@ -12,7 +12,7 @@ from dataset.utils import repeat
 
 def forward_snntorch(net, data):
     spk_rec = []
-    real_reset(net)
+    utils.reset(net)
 
     for step in range(data.size(0)):
         spk_out, mem_out = net(data[step])

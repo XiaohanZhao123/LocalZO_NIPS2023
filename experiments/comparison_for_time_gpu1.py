@@ -37,7 +37,7 @@ def main(cfg):
                                                     lr=lr,
                                                     constant_encoding=constant_encoding,
                                                     num_steps=num_steps)
-    with open(f'/home/zxh/remote/sparse_zo_nips2023/experiments/results/acceleration_for_different_models/{dataset_name}_{model_name}.txt',
+    with open(f'/home/zxh/remote/sparse_zo_nips2023/experiments/results/comparison_for_different_models/{dataset_name}_{model_name}.txt',
               'a+') as f:
         f.write(
             f'u_th:{cfg.model.u_th}, beta:{cfg.model.beta}, snn_torch_mean_time:{snntorch_mean_time}, spconv_mean_time{spconv_mean_time}\n')

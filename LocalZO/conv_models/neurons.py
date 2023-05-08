@@ -83,7 +83,7 @@ class LeakeyZOPlain(nn.Module):
 class LeakyZOPlainOnce(nn.Module):
     """only sample once to accelerate the training process"""
 
-    def __init__(self, u_th, beta, batch_size, random_sampler: NormalOnceSampler = NormalOnceSampler(), delta=0.01,
+    def __init__(self, u_th, beta, batch_size, random_sampler: NormalOnceSampler = NormalOnceSampler(), delta=0.05,
                  profile=False):
         """
         Leaky integrate-and-fire neuron model with plain implementation using ZO to approximate gradient
